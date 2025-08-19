@@ -48,19 +48,14 @@ async def get_logs(
 ):
     """Возвращает логи с возможностью фильтрации и удаления."""
 
-    filtered_logs = logs_storage.copy()
+    logs_to_return = []
+    global logs_storage
 
     # Фильтрация по service
     if service:
-        filtered_logs = [log for log in filtered_logs if log.get('service') == service]
+        logs_to_return = [item for item in logs_storage if item.get('service') == service]
 
-    # Удаляем логи после получения, если указано delete_after=true
-    logs_to_return = filtered_logs.copy()
-
-    if service:
-        # Удаляем логи из хранилища
-        global logs_storage
-        logs_storage = [log for log in logs_storage if log.get('service') != service]
-        print(f"Удалено логов сервиса '{service}': {len(filtered_logs)}")
+        # Удаляем их из исходного массива
+        logs_storage = [item for item in logs_storage if item.get('service') != service]
 
     return logs_to_return

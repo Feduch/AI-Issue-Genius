@@ -47,9 +47,9 @@ async def get_logs(
         service: Optional[str] = Query(None, description="Фильтр по сервису (например: django, nginx, postgresql)")
 ):
     """Возвращает логи с возможностью фильтрации и удаления."""
-
-    logs_to_return = []
     global logs_storage
+
+    logs_to_return = [item for item in logs_storage]
 
     # Фильтрация по service
     if service:

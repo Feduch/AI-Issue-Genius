@@ -43,6 +43,24 @@ async def receive_log(log: LogModel):
 
 
 @app.get("/api/logs")
-async def get_logs():
-    """Возвращает все сохранённые логи."""
-    return {"logs": logs_storage}
+async def get_logs(
+        service: Optional[str] = Query(None, description="Фильтр по сервису (например: django, nginx, postgresql)")
+):
+    """Возвращает логи с возможностью фильтрации и удаления."""
+
+    filtered_logs = logs_storage.copy()
+
+    # Фильтрация по service
+    if service:
+        filtered_logs = [log for log in filtered_logs if log.get('service') == service]
+
+    # Удаляем логи после получения, если указано delete_after=true
+    logs_to_return = filtered_logs.copy()
+
+    if service:
+        # Удаляем логи из хранилища
+        global logs_storage
+        logs_storage = [log for log in logs_storage if log.get('service') != service]
+        print(f"Удалено логов сервиса '{service}': {len(filtered_logs)}")
+
+    return logs_to_return

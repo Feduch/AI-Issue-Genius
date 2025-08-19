@@ -26,6 +26,7 @@ prompt = f"""
 Лог:
 ```json
 {log_json}
+```
 """
 
 response = llm(

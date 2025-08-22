@@ -1,7 +1,5 @@
-import json
-from fastapi import FastAPI, HTTPException, Request, Query
-from pydantic import BaseModel
-from typing import List, Optional
+from fastapi import FastAPI, Query, Body
+from typing import Optional, Dict, Any
 
 app = FastAPI()
 
@@ -10,7 +8,7 @@ logs_storage = []
 
 
 @app.post("/api/logs")
-async def receive_log(log):
+async def receive_log(log: Dict[Any, Any] = Body(...)):
     """Принимает лог и сохраняет его."""
     # Здесь можно добавить вызов AI-агента для анализа
     print(f"Получен лог: {log}")

@@ -13,7 +13,7 @@ async def receive_log(log: Dict[Any, Any] = Body(...)):
     # Здесь можно добавить вызов AI-агента для анализа
     print(f"Получен лог: {log}")
 
-    logs_storage.append(log.dict())
+    logs_storage.append(log)
     return {"status": "success", "log_id": len(logs_storage) - 1}
 
 

@@ -19,7 +19,8 @@ async def receive_log(log: Dict[Any, Any] = Body(...)):
 
 @app.get("/api/logs")
 async def get_logs(
-        service: Optional[str] = Query(None, description="Фильтр по сервису (например: django, nginx, postgresql)")
+        service: Optional[str] = Query(None, description="Фильтр по сервису (например: django, nginx, postgresql)"),
+        application: Optional[str] = Query(None, description="Фильтр по сервису (например: fourpillars)"),
 ):
     """Возвращает логи с возможностью фильтрации и удаления."""
     global logs_storage
@@ -32,5 +33,11 @@ async def get_logs(
 
         # Удаляем их из исходного массива
         logs_storage = [item for item in logs_storage if item.get('service') != service]
+
+    if application:
+        logs_to_return = [item for item in logs_storage if item.get('application') == application]
+
+        # Удаляем их из исходного массива
+        logs_storage = [item for item in logs_storage if item.get('application') != application]
 
     return logs_to_return

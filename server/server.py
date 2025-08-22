@@ -12,11 +12,10 @@ logs_storage = []
 @app.post("/api/logs")
 async def receive_log(log):
     """Принимает лог и сохраняет его."""
-    logs_storage.append(log.dict())
-
     # Здесь можно добавить вызов AI-агента для анализа
     print(f"Получен лог: {log}")
 
+    logs_storage.append(log.dict())
     return {"status": "success", "log_id": len(logs_storage) - 1}
 
 

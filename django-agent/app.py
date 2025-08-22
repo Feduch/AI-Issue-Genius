@@ -15,16 +15,18 @@ class LogAnalyzerService:
     def __init__(self, model_path: str, telegram_bot_token: str, telegram_chat_id: str):
         self.llm = Llama(
             model_path=model_path,
-            n_ctx=2048,
+            n_ctx=4096,
             n_threads=8,
             n_gpu_layers=0,
+            temperature=0.1,
+            top_p=0.9,
             verbose=False
         )
         self.telegram_bot_token = telegram_bot_token
         self.telegram_chat_id = telegram_chat_id
         self.api_url = "https://solar.ninja360.ru/api/logs"
 
-    def fetch_django_logs(self, hours_back: int = 24) -> List[Dict]:
+    def fetch_django_logs(self) -> List[Dict]:
         """Получение логов Django за указанный период"""
         try:
             params = {
@@ -54,52 +56,112 @@ class LogAnalyzerService:
     def analyze_log(self, log_data: Dict) -> str:
         """Анализ лога с помощью AI модели"""
         try:
+            error = log_data.get('error')
+
             prompt = f"""
-            Ты — AIssueGenius, эксперт по анализу ошибок. Проанализируй лог и предложи решение.
-            Будь конкретным и предлагай практические шаги для решения проблемы.
+            [INSTRUCTION]
+            Ты — AIssueGenius, эксперт по анализу ошибок Django/Python. 
+            Проанализируй эту ошибку и ответь строго по формату ниже.
+            [/INSTRUCTION]
 
-            Лог:
-            ```json
-            {json.dumps(log_data, indent=2, ensure_ascii=False)}
-            ```
+            [ERROR_DATA]
+            Сообщение об ошибке: {error.get('message')}
+            Трасировка кода Traceback: {error.get('stack_trace')}
+            [/ERROR_DATA]
+            
+            [RESPONSE_FORMAT]
+            🔍 Проблема: [1 предложение]
+            
+            🎯 Причина: [1 предложение - техническая причина]
+            
+            🛠️ Решение:
+            - [Конкретное действие]
+            
+            🛡️ Профилактика: [1 совет]
+            [/RESPONSE_FORMAT]
+            
+            [IMPORTANT]
+            - Максимум 1000 слов
+            - Без повторений
+            - Только по делу
+            - В каком файле и в какой строке возникла ошибка
+            - Начинай сразу с "🔍 Проблема:"
+            [/IMPORTANT]
+            
+            [SUGGESTION]
+            Тут напиши свой ответ и заверши свой ответ закрыв SUGGESTION
+            """
 
-            Структура ответа:
-            1. Краткое описание проблемы
-            2. Возможные причины
-            3. Конкретные шаги решения
-            4. Профилактические меры
+            prompt = f"""
+            Проанализируй ошибку Django и заполни шаблон:
+
+            ОШИБКА: {error.get('message')}
+            СТЕК: {error.get('stack_trace')}
+
+            ЗАПОЛНИ ЭТОТ ШАБЛОН:
+            🔍 Проблема: [суть ошибки]
+            🎯 Причина: [техническая причина] 
+            🛠️ Решение: [конкретные шаги]
+            🛡️ Профилактика: [1 совет]
+
+            Файл и строка: [из стека]
+
+            Начинай сразу с "🔍 Проблема:".
+            """
+
+            error = log_data.get('error', {})
+            stack_trace = error.get('stack_trace', '')
+
+            prompt = f"""
+            Проанализируй ошибку Django/Python:
+
+            {stack_trace}
+
+            Напиши краткий анализ этой ошибки. Включи:
+            1. В чем проблема
+            2. Почему возникла  
+            3. Как исправить
+            4. Как предотвратить
+
+            Ответ:
             """
 
             response = self.llm(
                 prompt,
-                max_tokens=512,
-                temperature=0.1,  # Более детерминированные ответы
+                max_tokens=500,
+                temperature=0.1,
+                stop=["\n\n", "###"],
                 stream=False
             )
 
-            return response["choices"][0]["text"].strip()
+            result = response["choices"][0]["text"].strip()
+
+            return result
 
         except Exception as e:
             logger.error(f"Ошибка при анализе лога: {e}")
             return f"Ошибка анализа: {str(e)}"
 
     def send_telegram_message(self, message: str) -> bool:
-        """Отправка сообщения в Telegram"""
+        """Отправка сообщения в Telegram с разбивкой на части"""
         try:
-            url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage"
+            # Разбиваем сообщение на части по 4000 символов
+            max_length = 4000
+            messages = [message[i:i + max_length] for i in range(0, len(message), max_length)]
 
-            payload = {
-                'chat_id': self.telegram_chat_id,
-                'text': message,
-                'parse_mode': 'HTML'
-            }
+            for i, msg_part in enumerate(messages):
+                url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage"
+                payload = {
+                    'chat_id': self.telegram_chat_id,
+                    'text': f"Часть {i + 1}/{len(messages)}\n\n{msg_part}",
+                    'parse_mode': 'HTML'
+                }
 
-            response = requests.post(url, json=payload, timeout=10)
-            response.raise_for_status()
+                response = requests.post(url, json=payload, timeout=10)
+                response.raise_for_status()
+                time.sleep(1)  # Пауза между сообщениями
 
-            logger.info("Сообщение отправлено в Telegram")
             return True
-
         except Exception as e:
             logger.error(f"Ошибка отправки в Telegram: {e}")
             return False
@@ -111,19 +173,19 @@ class LogAnalyzerService:
         timestamp = log_data.get('timestamp', datetime.now().isoformat())
 
         message = f"""
-🚨 <b>Новая ошибка обнаружена!</b>
-
-📅 <b>Время:</b> {timestamp}
-🔧 <b>Сервис:</b> {service}
-⚡ <b>Уровень:</b> {level}
-
-📋 <b>Данные лога:</b>
-<code>{json.dumps(log_data, indent=2, ensure_ascii=False)}</code>
-
-🤖 <b>Анализ AIssueGenius:</b>
-{analysis}
-
-#django #error #analysis
+            🚨 <b>Новая ошибка обнаружена!</b>
+            
+            📅 <b>Время:</b> {timestamp} UTC
+            🔧 <b>Сервис:</b> {service}
+            ⚡ <b>Уровень:</b> {level}
+            
+            📋 <b>Данные лога:</b>
+            <code>{json.dumps(log_data.get('error'), indent=2, ensure_ascii=False)}</code>
+            
+            🤖 <b>Анализ AIssueGenius:</b>
+            {analysis}
+            
+            #django #error #analysis
         """
 
         return message.strip()
@@ -135,7 +197,7 @@ class LogAnalyzerService:
         while True:
             try:
                 # Получаем логи
-                logs = self.fetch_django_logs(hours_back=1)  # За последний час
+                logs = self.fetch_django_logs()  # За последний час
 
                 if not logs:
                     logger.info("Новых ошибок не обнаружено")

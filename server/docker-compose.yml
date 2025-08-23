@@ -15,6 +15,31 @@ services:
       options:
         max-size: "100m"
 
+  ai-issue-genius-db:
+    image: "postgres:17.4-bookworm"
+    container_name: ai-issue-genius-db
+    volumes:
+      - /data/ai-issue-genius-db:/var/lib/postgresql/data
+      - ./prepare_database_db.sql:/docker-entrypoint-initdb.d/prepare_database.sql
+    ports:
+      - "5432"
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_HOST_AUTH_METHOD=md5
+    networks:
+      - apps_monitoring_net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+
 networks:
   apps_monitoring_net:
     external: true

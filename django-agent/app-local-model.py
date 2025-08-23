@@ -127,49 +127,6 @@ class LogAnalyzerService:
         Создает текстовый промпт из структурированного запроса
         """
         prompt = f"""
-                    Проанализируй ошибку в Django и предоставь анализ ТОЛЬКО в JSON формате без дополнительных объяснений.
-                
-                    КОНТЕКСТ ОШИБКИ:
-                    - Время: {ai_request['error_context']['timestamp']}
-                    - Окружение: {ai_request['error_context']['environment']}
-                    - Приложение: {ai_request['error_context']['application']}
-                    - Сервис: {ai_request['error_context']['service']}
-                    - Метод: {ai_request['error_context']['request_method']}
-                    - Путь: {ai_request['error_context']['request_path']}
-                
-                    ДЕТАЛИ ОШИБКИ:
-                    Тип: {ai_request['error_details']['type']}
-                    Сообщение: {ai_request['error_details']['message']}
-                
-                    TRACEBACK:
-                    {chr(10).join(ai_request['error_details']['traceback'][-5:])}
-                
-                    КОД С ОШИБКОЙ:
-                    Файл: {ai_request['error_details']['code_context'].get('file', 'unknown')}
-                    Строка: {ai_request['error_details']['code_context'].get('line', 'unknown')}
-                    Код: {ai_request['error_details']['code_context'].get('code_snippet', 'unknown')}
-                
-                    ОКРУЖЕНИЕ:
-                    Python: {ai_request['environment_info']['python_version']}
-                    Django: {ai_request['environment_info']['django_version']}
-                    Debug: {ai_request['environment_info']['debug_mode']}
-                    Database: {ai_request['environment_info']['database_engine']}
-                
-                    ПРОСЬБА:
-                    Предоставь анализ в следующем JSON формате:
-                    {{
-                      "problem_description": "краткое описание проблемы",
-                      "root_cause": "основная причина ошибки",
-                      "solution_steps": ["шаг 1", "шаг 2", "шаг 3"],
-                      "prevention_measures": ["мера 1", "мера 2"],
-                      "severity_level": "HIGH/MEDIUM/LOW",
-                      "affected_components": ["компонент1", "компонент2"]
-                    }}
-                
-                    АНАЛИЗ:
-                    """
-
-        prompt = f"""
                     Ты — AIssueGenius, эксперт по созданию технических issue.             
                     На основе анализа ошибки создай структурированное issue для разработчиков.
 

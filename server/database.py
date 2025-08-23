@@ -1,5 +1,6 @@
-import asyncpg
 import os
+import json
+import asyncpg
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
@@ -43,7 +44,7 @@ class Database:
             log_id = await conn.fetchval(
                 query,
                 service,
-                log_data
+                json.dumps(log_data)
             )
             return log_id
 

@@ -39,7 +39,7 @@ services:
       POSTGRES_HOST_AUTH_METHOD: trust
     command: >
       postgres 
-      -c log_statement=ddl 
+      -c log_statement=ddl
       -c log_duration=on 
       -c log_min_duration_statement=1000
       -c log_connections=on 

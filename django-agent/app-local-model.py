@@ -3,8 +3,7 @@ import json
 import time
 import logging
 from utils.django import prepare_ai_request
-from datetime import datetime, timedelta
-from typing import List, Dict, Any
+from typing import List, Dict
 from llama_cpp import Llama
 
 # Настройка логирования
@@ -50,8 +49,10 @@ class LogAnalyzerService:
             )
             response.raise_for_status()
 
-            logs = response.json()
-            logger.info(f"Получено {len(logs)} логов Django")
+            count = response.json().get('count')
+            logs = response.json().get('logs')
+
+            logger.info(f"Получено {count} логов Django")
             return logs
 
         except requests.exceptions.RequestException as e:
@@ -65,6 +66,9 @@ class LogAnalyzerService:
         """Анализ лога с помощью AI модели"""
         try:
             # Подготавливаем структурированный запрос
+            logger.info(f"log_data {log_data}")
+            log_id = log_data.get('id')
+
             ai_request = prepare_ai_request(log_data)
 
             # Создаем промпт для модели
@@ -203,7 +207,7 @@ class LogAnalyzerService:
         while True:
             try:
                 # Получаем логи
-                logs = self.fetch_django_logs()  # За последний час
+                logs = self.fetch_logs()  # За последний час
 
                 if not logs:
                     logger.info("Новых ошибок не обнаружено")

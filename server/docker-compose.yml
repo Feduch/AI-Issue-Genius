@@ -6,7 +6,7 @@ services:
       - .:/app
     working_dir: /app
     environment:
-      DATABASE_URL: postgresql://ai_issue_genius:ai_issue_genius@postgres/ai_issue_genius
+      DATABASE_URL: postgresql://ai_issue_genius:ai_issue_genius@ai-issue-genius-server/ai_issue_genius
     ports:
       - "9000"
     depends_on:

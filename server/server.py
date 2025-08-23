@@ -1,5 +1,6 @@
+import sys
 import uvicorn
-import contextlib
+import traceback
 from datetime import datetime, timezone, timedelta
 from fastapi import FastAPI, Query, Body, HTTPException
 from typing import Optional, Dict, Any, AsyncIterator
@@ -42,6 +43,8 @@ async def receive_log(log: Dict[Any, Any] = Body(...)):
             "message": "Лог успешно сохранен в БД"
         }
     except Exception as e:
+        traceback.print_exception(*sys.exc_info())
+
         if "Database connection not established" in str(e):
             raise HTTPException(status_code=503, detail="Сервис временно недоступен: нет подключения к БД")
         raise HTTPException(status_code=500, detail=f"Ошибка сохранения лога: {str(e)}")
@@ -61,6 +64,8 @@ async def receive_log(log_id: int, analysis: Dict[Any, Any] = Body(...)):
             "message": "Анализ успешно сохранен в БД"
         }
     except Exception as e:
+        traceback.print_exception(*sys.exc_info())
+
         if "Database connection not established" in str(e):
             raise HTTPException(status_code=503, detail="Сервис временно недоступен: нет подключения к БД")
         raise HTTPException(status_code=500, detail=f"Ошибка сохранения лога: {str(e)}")
@@ -90,7 +95,7 @@ async def get_logs(
 
 
     except Exception as e:
-
+        traceback.print_exception(*sys.exc_info())
         if "Database connection not established" in str(e):
             raise HTTPException(status_code=503, detail="Сервис временно недоступен: нет подключения к БД")
 

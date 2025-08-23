@@ -5,7 +5,7 @@ ALTER USER ai_issue_genius WITH SUPERUSER;
 \c ai_issue_genius
 
 -- Сначала создаем таблицу от имени postgres пользователя
-CREATE TABLE IF NOT EXISTS logs (
+CREATE TABLE logs (
     id BIGSERIAL PRIMARY KEY,
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     service VARCHAR(100) NOT NULL,

@@ -40,8 +40,10 @@ class LogAnalyzerService:
             )
             response.raise_for_status()
 
-            logs = response.json()
-            logger.info(f"Получено {len(logs)} логов Django")
+            count = response.json().get('count')
+            logs = response.json().get('logs')
+
+            logger.info(f"Получено {count} логов Django")
             return logs
 
         except requests.exceptions.RequestException as e:
@@ -103,21 +105,16 @@ class LogAnalyzerService:
     def send_telegram_message(self, message: str, issue_url: str) -> bool:
         """Отправка сообщения в Telegram с разбивкой на части"""
         try:
-            # Разбиваем сообщение на части по 4000 символов
-            max_length = 4000
-            messages = [message[i:i + max_length] for i in range(0, len(message), max_length)]
+            url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage"
+            payload = {
+                'chat_id': self.telegram_chat_id,
+                'text': f"{message}\n\n[Ссылка на issue]({issue_url})",
+                'parse_mode': 'Markdown'
+            }
+            response = requests.post(url, json=payload, timeout=10)
+            response.raise_for_status()
+            time.sleep(1)  # Пауза между сообщениями
 
-            for i, msg_part in enumerate(messages):
-                url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage"
-                payload = {
-                    'chat_id': self.telegram_chat_id,
-                    'text': f"Часть {i + 1}/{len(messages)}\n\n{msg_part}\n\n[Ссылка на issue]({issue_url})",
-                    'parse_mode': 'Markdown'
-                }
-
-                response = requests.post(url, json=payload, timeout=10)
-                response.raise_for_status()
-                time.sleep(1)  # Пауза между сообщениями
 
             return True
         except Exception as e:

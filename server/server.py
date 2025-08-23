@@ -51,7 +51,7 @@ async def receive_log(log: Dict[Any, Any] = Body(...)):
 
 
 @app.put("/api/logs")
-async def receive_log(log_id: int, analysis: Dict[Any, Any] = Body(...)):
+async def update_log(log_id: int, analysis: Dict[Any, Any] = Body(...)):
     """Добавляет AI-анализ лога"""
 
     try:

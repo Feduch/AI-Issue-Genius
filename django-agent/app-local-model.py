@@ -2,6 +2,7 @@ import requests
 import json
 import time
 import logging
+from utils.django import prepare_ai_request
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 from llama_cpp import Llama
@@ -15,13 +16,20 @@ class LogAnalyzerService:
     def __init__(self, model_path: str, telegram_bot_token: str, telegram_chat_id: str):
         self.llm = Llama(
             model_path=model_path,
-            n_ctx=4096,
-            n_threads=8,
+            n_ctx=16384,
+            n_threads=12,
             n_gpu_layers=0,
             temperature=0.1,
             top_p=0.9,
             verbose=False
         )
+
+        logger.info("Информация о модели:")
+        logger.info(f"Имя модели: {self.llm.model_path}")
+        logger.info(f"Размер контекста: {self.llm.n_ctx}")
+        # logger.info(f"Количество параметров: {self.llm.n_params()}")
+        logger.info(f"Размер словаря: {self.llm.n_vocab()}")
+
         self.telegram_bot_token = telegram_bot_token
         self.telegram_chat_id = telegram_chat_id
         self.api_url = "https://solar.ninja360.ru/api/logs"
@@ -56,85 +64,33 @@ class LogAnalyzerService:
     def analyze_log(self, log_data: Dict) -> str:
         """Анализ лога с помощью AI модели"""
         try:
-            error = log_data.get('error')
+            # Подготавливаем структурированный запрос
+            ai_request = prepare_ai_request(log_data)
 
-            prompt = f"""
-            [INSTRUCTION]
-            Ты — AIssueGenius, эксперт по анализу ошибок Django/Python. 
-            Проанализируй эту ошибку и ответь строго по формату ниже.
-            [/INSTRUCTION]
+            # Создаем промпт для модели
+            prompt = self.create_analysis_prompt(ai_request)
 
-            [ERROR_DATA]
-            Сообщение об ошибке: {error.get('message')}
-            Трасировка кода Traceback: {error.get('stack_trace')}
-            [/ERROR_DATA]
-            
-            [RESPONSE_FORMAT]
-            🔍 Проблема: [1 предложение]
-            
-            🎯 Причина: [1 предложение - техническая причина]
-            
-            🛠️ Решение:
-            - [Конкретное действие]
-            
-            🛡️ Профилактика: [1 совет]
-            [/RESPONSE_FORMAT]
-            
-            [IMPORTANT]
-            - Максимум 1000 слов
-            - Без повторений
-            - Только по делу
-            - В каком файле и в какой строке возникла ошибка
-            - Начинай сразу с "🔍 Проблема:"
-            [/IMPORTANT]
-            
-            [SUGGESTION]
-            Тут напиши свой ответ и заверши свой ответ закрыв SUGGESTION
-            """
+            logger.info(f"prompt {prompt}")
 
-            prompt = f"""
-            Проанализируй ошибку Django и заполни шаблон:
+            # Формируем сообщения для chat-style модели
+            messages = [
+                {"role": "system",
+                 "content": "Ты опытный Python/Django разработчик, специализирующийся на анализе ошибок и поиске решений."},
+                {"role": "user", "content": prompt}
+            ]
 
-            ОШИБКА: {error.get('message')}
-            СТЕК: {error.get('stack_trace')}
-
-            ЗАПОЛНИ ЭТОТ ШАБЛОН:
-            🔍 Проблема: [суть ошибки]
-            🎯 Причина: [техническая причина] 
-            🛠️ Решение: [конкретные шаги]
-            🛡️ Профилактика: [1 совет]
-
-            Файл и строка: [из стека]
-
-            Начинай сразу с "🔍 Проблема:".
-            """
-
-            error = log_data.get('error', {})
-            stack_trace = error.get('stack_trace', '')
-
-            prompt = f"""
-            Проанализируй ошибку Django/Python:
-
-            {stack_trace}
-
-            Напиши краткий анализ этой ошибки. Включи:
-            1. В чем проблема
-            2. Почему возникла  
-            3. Как исправить
-            4. Как предотвратить
-
-            Ответ:
-            """
-
-            response = self.llm(
-                prompt,
-                max_tokens=500,
-                temperature=0.1,
-                stop=["\n\n", "###"],
-                stream=False
+            # Выполняем запрос к модели
+            response = self.llm.create_chat_completion(
+                messages=messages,
+                max_tokens=1024,
+                frequency_penalty=0.5,
+                temperature=0.3,  # Низкая температура для детерминированных ответов
+                stop=["</analysis>", "###", "---", "\n\n"]
             )
 
-            result = response["choices"][0]["text"].strip()
+            result = response['choices'][0]['message']['content']
+
+            logger.info(f"result {result}")
 
             return result
 
@@ -166,29 +122,122 @@ class LogAnalyzerService:
             logger.error(f"Ошибка отправки в Telegram: {e}")
             return False
 
-    def format_analysis_message(self, log_data: Dict, analysis: str) -> str:
-        """Форматирование сообщения для Telegram"""
-        level = log_data.get('level', 'UNKNOWN')
-        service = log_data.get('service', 'UNKNOWN')
-        timestamp = log_data.get('timestamp', datetime.now().isoformat())
-
-        message = f"""
-            🚨 <b>Новая ошибка обнаружена!</b>
-            
-            📅 <b>Время:</b> {timestamp} UTC
-            🔧 <b>Сервис:</b> {service}
-            ⚡ <b>Уровень:</b> {level}
-            
-            📋 <b>Данные лога:</b>
-            <code>{json.dumps(log_data.get('error'), indent=2, ensure_ascii=False)}</code>
-            
-            🤖 <b>Анализ AIssueGenius:</b>
-            {analysis}
-            
-            #django #error #analysis
+    def create_analysis_prompt(self, ai_request):
         """
+        Создает текстовый промпт из структурированного запроса
+        """
+        prompt = f"""
+                    Проанализируй ошибку в Django и предоставь анализ ТОЛЬКО в JSON формате без дополнительных объяснений.
+                
+                    КОНТЕКСТ ОШИБКИ:
+                    - Время: {ai_request['error_context']['timestamp']}
+                    - Окружение: {ai_request['error_context']['environment']}
+                    - Приложение: {ai_request['error_context']['application']}
+                    - Сервис: {ai_request['error_context']['service']}
+                    - Метод: {ai_request['error_context']['request_method']}
+                    - Путь: {ai_request['error_context']['request_path']}
+                
+                    ДЕТАЛИ ОШИБКИ:
+                    Тип: {ai_request['error_details']['type']}
+                    Сообщение: {ai_request['error_details']['message']}
+                
+                    TRACEBACK:
+                    {chr(10).join(ai_request['error_details']['traceback'][-5:])}
+                
+                    КОД С ОШИБКОЙ:
+                    Файл: {ai_request['error_details']['code_context'].get('file', 'unknown')}
+                    Строка: {ai_request['error_details']['code_context'].get('line', 'unknown')}
+                    Код: {ai_request['error_details']['code_context'].get('code_snippet', 'unknown')}
+                
+                    ОКРУЖЕНИЕ:
+                    Python: {ai_request['environment_info']['python_version']}
+                    Django: {ai_request['environment_info']['django_version']}
+                    Debug: {ai_request['environment_info']['debug_mode']}
+                    Database: {ai_request['environment_info']['database_engine']}
+                
+                    ПРОСЬБА:
+                    Предоставь анализ в следующем JSON формате:
+                    {{
+                      "problem_description": "краткое описание проблемы",
+                      "root_cause": "основная причина ошибки",
+                      "solution_steps": ["шаг 1", "шаг 2", "шаг 3"],
+                      "prevention_measures": ["мера 1", "мера 2"],
+                      "severity_level": "HIGH/MEDIUM/LOW",
+                      "affected_components": ["компонент1", "компонент2"]
+                    }}
+                
+                    АНАЛИЗ:
+                    """
 
-        return message.strip()
+        prompt = f"""
+                    Ты — AIssueGenius, эксперт по созданию технических issue.             
+                    На основе анализа ошибки создай структурированное issue для разработчиков.
+
+                    ДАННЫЕ ДЛЯ АНАЛИЗА:
+
+                    КОНТЕКСТ ОШИБКИ:
+                    - Время: {ai_request['error_context']['timestamp']}
+                    - Окружение: {ai_request['error_context']['environment']}
+                    - Приложение: {ai_request['error_context']['application']}
+                    - Сервис: {ai_request['error_context']['service']}
+                    - Метод: {ai_request['error_context']['request_method']}
+                    - Путь: {ai_request['error_context']['request_path']}
+
+                    ДЕТАЛИ ОШИБКИ:
+                    Тип: {ai_request['error_details']['type']}
+                    Сообщение: {ai_request['error_details']['message']}
+
+                    TRACEBACK:
+                    {chr(10).join(ai_request['error_details']['traceback'][-5:])}
+
+                    КОД С ОШИБКОЙ:
+                    Файл: {ai_request['error_details']['code_context'].get('file', 'unknown')}
+                    Строка: {ai_request['error_details']['code_context'].get('line', 'unknown')}
+                    Код: {ai_request['error_details']['code_context'].get('code_snippet', 'unknown')}
+
+                    ОКРУЖЕНИЕ:
+                    Python: {ai_request['environment_info']['python_version']}
+                    Django: {ai_request['environment_info']['django_version']}
+                    Debug: {ai_request['environment_info']['debug_mode']}
+                    Database: {ai_request['environment_info']['database_engine']}
+
+                    ИНСТРУКЦИЯ ДЛЯ СОЗДАНИЯ ISSUE:
+                    1. Title: Краткое описательное название (максимум 10 слов)                
+                    2. Description:                
+                        - Краткое описание проблемы                
+                        - Шаги для воспроизведения (если применимо)                
+                    3. Labels: Добавь соответствующие метки (через запятую)                
+                    4. Priority: Определи приоритет (Critical, High, Medium, Low)                
+                    5. Assignee: Укажи suggested assignee (backend, frontend, devops, database)                
+                    6. Milestone: Предложи milestone если это критичный баг                
+                    7 .Checklist: Создай чеклист для решения проблемы
+
+                    ФОРМАТ ВЫВОДА:
+                    Выведи результат строго в формате JSON:
+                    {{
+                      "title": "string",
+                      "description": "string",
+                      "labels": "string,string,string",
+                      "priority": "Critical|High|Medium|Low",
+                      "assignee": "backend|frontend|devops|database",
+                      "milestone": "string|null",
+                      "checklist": [
+                        "Шаг 1: Описание действия",
+                        "Шаг 2: Описание действия"
+                      ]
+                    }}
+
+                    ПРИМЕР ХОРОШЕГО ISSUE:
+                    Title: "Тайм-аут соединения с базой данных в приложении Django"
+                    Priority: "High"
+                    Labels: "bug,database,backend"
+                    Assignee: "backend"
+
+                    Будь конкретным и практичным в рекомендациях!
+                """
+
+        return prompt
+
 
     def run_analysis_cycle(self, interval_minutes: int = 30):
         """Основной цикл анализа"""
@@ -207,10 +256,9 @@ class LogAnalyzerService:
                 # Анализируем каждую ошибку
                 for log in logs:
                     analysis = self.analyze_log(log)
-                    message = self.format_analysis_message(log, analysis)
 
                     # Отправляем в Telegram
-                    self.send_telegram_message(message)
+                    self.send_telegram_message(analysis)
 
                     # Небольшая пауза между сообщениями
                     time.sleep(2)
@@ -226,7 +274,7 @@ class LogAnalyzerService:
 
 # Конфигурация
 CONFIG = {
-    'model_path': "../models/deepseek-coder-1.3b-instruct.Q4_K_M.gguf",
+    'model_path': "../models/deepseek-coder-6.7b-instruct.Q4_K_M.gguf",
     'telegram_bot_token': "6630832399:AAHs_e3g9C0Uf03DRJCuie2P0bQY_YaVQis",  # Замените на реальный токен
     'telegram_chat_id': 94486111,  # Замените на реальный ID чата
     'check_interval_minutes': 30

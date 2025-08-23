@@ -64,7 +64,7 @@ class Database:
 
             updated_id = await conn.fetchval(
                 query,
-                analysis,
+                json.dumps(analysis),
                 log_id
             )
             return updated_id

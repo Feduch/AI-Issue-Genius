@@ -33,14 +33,14 @@ services:
     ports:
       - "5432"
     environment:
-      POSTGRES_DB: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ai_issue_genius
+      POSTGRES_USER: ai_issue_genius
+      POSTGRES_PASSWORD: ai_issue_genius
       POSTGRES_HOST_AUTH_METHOD: trust
     networks:
       - apps_monitoring_net
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d postgres" ]
+      test: [ "CMD-SHELL", "pg_isready -U ai_issue_genius -d ai_issue_genius" ]
       interval: 5s
       timeout: 5s
       retries: 5

@@ -1,4 +1,3 @@
-CREATE DATABASE ai_issue_genius;
 CREATE USER ai_issue_genius WITH PASSWORD 'ai_issue_genius';
 ALTER USER ai_issue_genius WITH SUPERUSER;
 

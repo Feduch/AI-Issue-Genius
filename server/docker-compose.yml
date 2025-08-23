@@ -37,7 +37,13 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_HOST_AUTH_METHOD: trust
-      PGOPTIONS: "-c log_statement=ddl -c log_min_duration_statement=1000"
+    command: >
+      postgres 
+      -c log_statement=ddl 
+      -c log_duration=on 
+      -c log_min_duration_statement=1000
+      -c log_connections=on 
+      -c log_disconnections=on
     networks:
       - apps_monitoring_net
     healthcheck:

@@ -66,8 +66,10 @@ class LogAnalyzerService:
         """Анализ лога с помощью AI модели"""
         try:
             # Подготавливаем структурированный запрос
-            logger.info(f"log_data {log_data}")
             log_id = log_data.get('id')
+            log_data = json.loads(log_data.get('log'))
+
+            logger.info(f"log_id {log_id} log_data {log_data}")
 
             ai_request = prepare_ai_request(log_data)
 

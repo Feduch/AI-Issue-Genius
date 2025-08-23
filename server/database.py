@@ -92,7 +92,7 @@ class Database:
                 SELECT id, timestamp, service, log, ai_analysis, analysis_time
                 FROM logs 
                 WHERE service = $1 AND analysis_time is null
-                ORDER BY timestamp DESC
+                ORDER BY id ASC
                 LIMIT $2
             """
 

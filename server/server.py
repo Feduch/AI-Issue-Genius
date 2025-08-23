@@ -3,6 +3,9 @@ import contextlib
 from datetime import datetime, timezone, timedelta
 from fastapi import FastAPI, Query, Body, HTTPException
 from typing import Optional, Dict, Any, AsyncIterator
+
+from jinja2.ext import debug
+
 from database import db
 
 app = FastAPI(title="AI Issue Genius API", version="1.0.0")
@@ -78,6 +81,8 @@ async def get_logs(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка получения логов: {str(e)}")
 
+
+print(__name__)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=9000)

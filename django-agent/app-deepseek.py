@@ -24,7 +24,7 @@ class LogAnalyzerService:
         self.telegram_chat_id = telegram_chat_id
         self.api_url = "https://solar.ninja360.ru/api/logs"
 
-    def fetch_django_logs(self) -> List[Dict]:
+    def fetch_logs(self) -> List[Dict]:
         """Получение логов Django за указанный период"""
         try:
             params = {
@@ -198,19 +198,27 @@ class LogAnalyzerService:
 
         return prompt
 
-    def create_issue(self, payload: str):
+    def prepare_analysis(self, payload: str) -> Dict[str, Any]:
         """
-        Создает issue на основе ответа ИИ агента
+        Получает json из анализа
         :param payload:
         :return:
         """
-
         pattern = r'```json\s*(.*?)\s*```'
         match = re.search(pattern, payload, re.DOTALL)
         if match:
             json_string = match.group(1).strip()
             payload = json.loads(json_string)
 
+        return payload
+
+
+    def create_issue(self, payload: Dict[str, Any]) -> str:
+        """
+        Создает issue на основе ответа ИИ агента
+        :param payload:
+        :return: url to issue
+        """
         checklist = '## Чек-лист\n\n'
 
         for item in payload.get('checklist', []):
@@ -226,8 +234,44 @@ class LogAnalyzerService:
         }
 
         response = requests.post(url, headers=headers, json=data)
-        # print(response.json())
         return response.json().get('web_url')
+
+
+    def save_analysis(self, log_id: int, analysis: Dict[str, Any]):
+        """
+        Сохраняет ответ от ИИ в базу
+        :param analysis:
+        :return:
+        """
+        logger.info(f"log_id ------------- {log_id} ------------------------")
+        logger.info(analysis)
+        logger.info(f"=======================================================")
+
+        try:
+            logger.info(f"Сохраняет анализ лога log_id {log_id}")
+
+            headers = {
+                'Content-Type': 'application/json'
+            }
+
+            response = requests.put(
+                self.api_url,
+                json={
+                    'log_id': log_id,
+                    'analysis': analysis
+                },
+                timeout=30,
+                headers=headers
+            )
+            response.raise_for_status()
+
+            logs = response.json()
+            logger.info(f"Анализ лога успешно сохранен log_id {log_id} logs {logs}")
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Ошибка при получении логов: {e}")
+        except json.JSONDecodeError as e:
+            logger.error(f"Ошибка парсинга JSON: {e}")
 
 
     def run_analysis_cycle(self, interval_minutes: int = 30):
@@ -237,7 +281,7 @@ class LogAnalyzerService:
         while True:
             try:
                 # Получаем логи
-                logs = self.fetch_django_logs()  # За последний час
+                logs = self.fetch_logs()  # За последний час
 
                 if not logs:
                     logger.info("Новых ошибок не обнаружено")
@@ -246,10 +290,18 @@ class LogAnalyzerService:
 
                 # Анализируем каждую ошибку
                 for log in logs:
-                    analysis = self.analyze_log(log)
+                    log_id = log.get('id')
+                    log_data = json.loads(log.get('log'))
+
+                    analysis = self.analyze_log(log_data)
+
+                    payload = self.prepare_analysis(analysis)
+
+                    # Сохранить ответ от ИИ
+                    self.save_analysis(log_id, payload)
 
                     # Создает issue
-                    issue_url = self.create_issue(analysis)
+                    issue_url = self.create_issue(payload)
 
                     # Отправляем в Telegram
                     self.send_telegram_message(analysis, issue_url)

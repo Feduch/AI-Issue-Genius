@@ -27,7 +27,7 @@ async def shutdown_event():
 
 @app.post("/api/logs")
 async def receive_log(log: Dict[Any, Any] = Body(...)):
-    """Принимает лог и сохраняет его в PostgreSQL с AI-анализом."""
+    """Принимает лог и сохраняет его в PostgreSQL"""
 
     try:
         # Извлекаем service из лога или используем значение по умолчанию
@@ -40,6 +40,25 @@ async def receive_log(log: Dict[Any, Any] = Body(...)):
             "status": "success",
             "log_id": log_id,
             "message": "Лог успешно сохранен в БД"
+        }
+    except Exception as e:
+        if "Database connection not established" in str(e):
+            raise HTTPException(status_code=503, detail="Сервис временно недоступен: нет подключения к БД")
+        raise HTTPException(status_code=500, detail=f"Ошибка сохранения лога: {str(e)}")
+
+
+@app.put("/api/logs")
+async def receive_log(log_id: int, analysis: Dict[Any, Any] = Body(...)):
+    """Добавляет AI-анализ лога"""
+
+    try:
+        # Сохраняем в базу данных
+        log_id = await db.update_log(log_id, analysis)
+
+        return {
+            "status": "success",
+            "log_id": log_id,
+            "message": "Анализ успешно сохранен в БД"
         }
     except Exception as e:
         if "Database connection not established" in str(e):

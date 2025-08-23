@@ -2,7 +2,6 @@ import asyncpg
 import os
 from typing import Optional, Dict, Any, List
 from datetime import datetime
-import json
 
 
 class Database:
@@ -44,9 +43,30 @@ class Database:
             log_id = await conn.fetchval(
                 query,
                 service,
-                json.dumps(log_data)
+                log_data
             )
             return log_id
+
+    async def update_log(self, log_id: int, analysis: Dict[Any, Any]) -> int:
+        """Вставляет лог в базу данных и возвращает ID"""
+        if not self.pool:
+            raise Exception("Database connection not established")
+
+        async with self.pool.acquire() as conn:
+            query = """
+                UPDATE logs 
+                SET analysis = $1, 
+                    analysis_time = NOW()
+                WHERE id = $2
+                RETURNING id
+            """
+
+            updated_id = await conn.fetchval(
+                query,
+                analysis,
+                log_id
+            )
+            return updated_id
 
     async def get_log_by_id(self, log_id: int) -> Optional[Dict[str, Any]]:
         """Получает лог по ID"""

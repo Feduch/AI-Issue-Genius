@@ -1,43 +1,72 @@
-from fastapi import FastAPI, Query, Body
+import uvicorn
+from datetime import datetime, timezone, timedelta
+from fastapi import FastAPI, Query, Body, HTTPException
 from typing import Optional, Dict, Any
+from database import db
 
-app = FastAPI()
+app = FastAPI(title="AI Issue Genius API", version="1.0.0")
 
-# Хранилище логов (вместо БД для примера)
-logs_storage = []
+# Обработчики событий запуска и остановки
+@app.on_event("startup")
+async def startup_event():
+    """Инициализация при запуске"""
+    await db.connect()
+    await db.init_db()
+    print("Приложение запущено")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Очистка при остановке"""
+    await db.disconnect()
+    print("Приложение остановлено")
 
 
 @app.post("/api/logs")
 async def receive_log(log: Dict[Any, Any] = Body(...)):
-    """Принимает лог и сохраняет его."""
-    # Здесь можно добавить вызов AI-агента для анализа
-    print(f"Получен лог: {log}")
+    """Принимает лог и сохраняет его в PostgreSQL с AI-анализом."""
 
-    logs_storage.append(log)
-    return {"status": "success", "log_id": len(logs_storage) - 1}
+    try:
+        # Извлекаем service из лога или используем значение по умолчанию
+        service = log.get('service', 'unknown')
+
+        # Сохраняем в базу данных
+        log_id = await db.insert_log(service, log)
+
+        return {
+            "status": "success",
+            "log_id": log_id,
+            "message": "Лог успешно сохранен в БД"
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка сохранения лога: {str(e)}")
 
 
 @app.get("/api/logs")
 async def get_logs(
-        service: Optional[str] = Query(None, description="Фильтр по сервису (например: django, nginx, postgresql)"),
-        application: Optional[str] = Query(None, description="Фильтр по сервису (например: fourpillars)"),
+        service: Optional[str] = Query(None, description="Фильтр по сервису"),
+        hours: Optional[int] = Query(24, description="Количество часов для выборки"),
+        limit: Optional[int] = Query(100, description="Лимит записей")
 ):
-    """Возвращает логи с возможностью фильтрации и удаления."""
-    global logs_storage
+    """Получает логи с фильтрацией"""
+    try:
+        if service:
+            # Фильтр по сервису
+            logs = await db.get_logs_by_service(service, limit)
+        else:
+            # Фильтр по времени
+            end_time = datetime.now(tz=timezone.utc)
+            start_time = end_time - timedelta(hours=hours)
+            logs = await db.get_logs_by_time_range(start_time, end_time, limit)
 
-    logs_to_return = [item for item in logs_storage]
+        return {
+            "count": len(logs),
+            "logs": logs
+        }
 
-    # Фильтрация по service
-    if service:
-        logs_to_return = [item for item in logs_storage if item.get('service') == service]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка получения логов: {str(e)}")
 
-        # Удаляем их из исходного массива
-        logs_storage = [item for item in logs_storage if item.get('service') != service]
 
-    if application:
-        logs_to_return = [item for item in logs_storage if item.get('application') == application]
-
-        # Удаляем их из исходного массива
-        logs_storage = [item for item in logs_storage if item.get('application') != application]
-
-    return logs_to_return
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=9000)

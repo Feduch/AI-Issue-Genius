@@ -56,7 +56,7 @@ class Database:
         async with self.pool.acquire() as conn:
             query = """
                 UPDATE logs 
-                SET analysis = $1, 
+                SET ai_analysis = $1, 
                     analysis_time = NOW()
                 WHERE id = $2
                 RETURNING id

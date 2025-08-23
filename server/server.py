@@ -1,6 +1,7 @@
 import sys
 import uvicorn
 import traceback
+from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
 from fastapi import FastAPI, Query, Body, HTTPException
 from typing import Optional, Dict, Any, AsyncIterator
@@ -50,13 +51,17 @@ async def receive_log(log: Dict[Any, Any] = Body(...)):
         raise HTTPException(status_code=500, detail=f"Ошибка сохранения лога: {str(e)}")
 
 
+class UpdateLogRequest(BaseModel):
+    log_id: int
+    analysis: Dict[Any, Any]
+
 @app.put("/api/logs")
-async def update_log(log_id: int, analysis: Dict[Any, Any] = Body(...)):
+async def update_log(request: UpdateLogRequest):
     """Добавляет AI-анализ лога"""
 
     try:
         # Сохраняем в базу данных
-        log_id = await db.update_log(log_id, analysis)
+        log_id = await db.update_log(request.log_id, request.analysis)
 
         return {
             "status": "success",

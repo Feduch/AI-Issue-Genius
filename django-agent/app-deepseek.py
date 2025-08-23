@@ -240,12 +240,8 @@ class LogAnalyzerService:
         :param analysis:
         :return:
         """
-        logger.info(f"log_id ------------- {log_id} ------------------------")
-        logger.info(analysis)
-        logger.info(f"=======================================================")
-
         try:
-            logger.info(f"Сохраняет анализ лога log_id {log_id}")
+            logger.info(f"Сохраняет анализ для лога log_id {log_id}")
 
             headers = {
                 'Content-Type': 'application/json'

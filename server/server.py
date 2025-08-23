@@ -11,31 +11,18 @@ from database import db
 app = FastAPI(title="AI Issue Genius API", version="1.0.0")
 
 # Обработчики событий запуска и остановки
-@contextlib.asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Lifespan event handler для управления жизненным циклом приложения"""
-    # Startup logic
-    print("Запуск приложения...")
-    try:
-        await db.connect()
-        print("Подключение к БД установлено")
-        await db.init_db()
-        print("Таблица logs готова к работе")
-        print("Приложение запущено и готово к работе")
-    except Exception as e:
-        print(f"КРИТИЧЕСКАЯ ОШИБКА при запуске приложения: {e}")
-        # Не поднимаем исключение, чтобы приложение могло работать
-        # в режиме без БД или перезапуститься
+# Обработчики событий запуска и остановки
+@app.on_event("startup")
+async def startup_event():
+    """Инициализация при запуске"""
+    await db.connect()
+    await db.init_db()
+    print("Приложение запущено")
 
-    yield  # Здесь приложение работает
-
-    # Shutdown logic
-    print("Остановка приложения...")
-    try:
-        await db.disconnect()
-        print("Подключение к БД закрыто")
-    except Exception as e:
-        print(f"Ошибка при остановке приложения: {e}")
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Очистка при остановке"""
+    await db.disconnect()
     print("Приложение остановлено")
 
 
@@ -90,6 +77,12 @@ async def get_logs(
             raise HTTPException(status_code=503, detail="Сервис временно недоступен: нет подключения к БД")
 
         raise HTTPException(status_code=500, detail=f"Ошибка получения лога: {str(e)}")
+
+
+@app.get("/api/health")
+async def get_health():
+    """Статус сервиса"""
+    return {'status': 'ok', 'timestamp': datetime.now().isoformat()}
 
 
 if __name__ == "__main__":

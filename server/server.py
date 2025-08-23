@@ -18,11 +18,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     print("Запуск приложения...")
     try:
         await db.connect()
+        print("Подключение к БД установлено")
         await db.init_db()
+        print("Таблица logs готова к работе")
         print("Приложение запущено и готово к работе")
     except Exception as e:
-        print(f"Ошибка при запуске приложения: {e}")
-        raise
+        print(f"КРИТИЧЕСКАЯ ОШИБКА при запуске приложения: {e}")
+        # Не поднимаем исключение, чтобы приложение могло работать
+        # в режиме без БД или перезапуститься
 
     yield  # Здесь приложение работает
 
@@ -30,9 +33,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     print("Остановка приложения...")
     try:
         await db.disconnect()
-        print("Приложение остановлено")
+        print("Подключение к БД закрыто")
     except Exception as e:
         print(f"Ошибка при остановке приложения: {e}")
+    print("Приложение остановлено")
 
 
 @app.post("/api/logs")
@@ -51,8 +55,9 @@ async def receive_log(log: Dict[Any, Any] = Body(...)):
             "log_id": log_id,
             "message": "Лог успешно сохранен в БД"
         }
-
     except Exception as e:
+        if "Database connection not established" in str(e):
+            raise HTTPException(status_code=503, detail="Сервис временно недоступен: нет подключения к БД")
         raise HTTPException(status_code=500, detail=f"Ошибка сохранения лога: {str(e)}")
 
 
@@ -78,8 +83,13 @@ async def get_logs(
             "logs": logs
         }
 
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка получения логов: {str(e)}")
+
+        if "Database connection not established" in str(e):
+            raise HTTPException(status_code=503, detail="Сервис временно недоступен: нет подключения к БД")
+
+        raise HTTPException(status_code=500, detail=f"Ошибка получения лога: {str(e)}")
 
 
 if __name__ == "__main__":

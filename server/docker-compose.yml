@@ -13,6 +13,12 @@ services:
       - ai-issue-genius-db
     networks:
       - apps_monitoring_net
+    # Добавляем healthcheck для сервера
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/api/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     logging:
       driver: "json-file"
       options:
@@ -34,7 +40,7 @@ services:
     networks:
       - apps_monitoring_net
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: [ "CMD-SHELL", "pg_isready -U ai_issue_genius -d ai_issue_genius" ]
       interval: 5s
       timeout: 5s
       retries: 5

@@ -66,6 +66,9 @@ class Database:
 
     async def insert_log(self, service: str, log_data: Dict[Any, Any]) -> int:
         """Вставляет лог в базу данных и возвращает ID"""
+        if not self.pool:
+            raise Exception("Database connection not established")
+
         async with self.pool.acquire() as conn:
             query = """
                 INSERT INTO logs (service, log)
@@ -82,6 +85,9 @@ class Database:
 
     async def get_log_by_id(self, log_id: int) -> Optional[Dict[str, Any]]:
         """Получает лог по ID"""
+        if not self.pool:
+            raise Exception("Database connection not established")
+
         async with self.pool.acquire() as conn:
             query = """
                 SELECT id, timestamp, service, log, ai_analysis, analysis_time
@@ -96,6 +102,9 @@ class Database:
     async def get_logs_by_time_range(self, start_time: datetime, end_time: datetime,
                                      limit: int = 100) -> List[Dict[str, Any]]:
         """Получает логи за временной промежуток"""
+        if not self.pool:
+            raise Exception("Database connection not established")
+
         async with self.pool.acquire() as conn:
             query = """
                 SELECT id, timestamp, service, log, ai_analysis, analysis_time
@@ -110,6 +119,9 @@ class Database:
 
     async def get_logs_by_service(self, service: str, limit: int = 100) -> List[Dict[str, Any]]:
         """Получает логи по сервису"""
+        if not self.pool:
+            raise Exception("Database connection not established")
+
         async with self.pool.acquire() as conn:
             query = """
                 SELECT id, timestamp, service, log, ai_analysis, analysis_time
@@ -124,6 +136,9 @@ class Database:
 
     async def get_total_logs_count(self) -> int:
         """Возвращает общее количество логов"""
+        if not self.pool:
+            raise Exception("Database connection not established")
+
         async with self.pool.acquire() as conn:
             return await conn.fetchval("SELECT COUNT(*) FROM logs")
 

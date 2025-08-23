@@ -37,6 +37,11 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_HOST_AUTH_METHOD: trust
+    command: >
+      postgres 
+      -c log_statement=all 
+      -c log_duration=on 
+      -c log_min_duration_statement=0
     networks:
       - apps_monitoring_net
     healthcheck:

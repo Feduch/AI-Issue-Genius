@@ -34,7 +34,7 @@ class LogAnalyzerService:
         self.telegram_chat_id = telegram_chat_id
         self.api_url = "https://solar.ninja360.ru/api/logs"
 
-    def fetch_django_logs(self) -> List[Dict]:
+    def fetch_logs(self) -> List[Dict]:
         """Получение логов Django за указанный период"""
         try:
             params = {

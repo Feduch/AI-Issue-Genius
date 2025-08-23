@@ -16,7 +16,6 @@ app = FastAPI(title="AI Issue Genius API", version="1.0.0")
 async def startup_event():
     """Инициализация при запуске"""
     await db.connect()
-    await db.init_db()
     print("Приложение запущено")
 
 @app.on_event("shutdown")

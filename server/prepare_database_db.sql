@@ -1,9 +1,10 @@
--- Предоставляем права на схему public пользователю ai_issue_genius
-GRANT ALL ON SCHEMA public TO ai_issue_genius;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ai_issue_genius;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ai_issue_genius;
+CREATE DATABASE ai_issue_genius;
+CREATE USER ai_issue_genius WITH PASSWORD 'ai_issue_genius';
+ALTER USER ai_issue_genius WITH SUPERUSER;
 
--- Создаем таблицу
+\c ai_issue_genius
+
+-- Сначала создаем таблицу от имени postgres пользователя
 CREATE TABLE IF NOT EXISTS logs (
     id BIGSERIAL PRIMARY KEY,
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -17,3 +18,8 @@ CREATE TABLE IF NOT EXISTS logs (
 CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp);
 CREATE INDEX IF NOT EXISTS idx_logs_service ON logs(service);
 CREATE INDEX IF NOT EXISTS idx_logs_analysis_time ON logs(analysis_time);
+
+-- Предоставляем права пользователю ai_issue_genius
+GRANT ALL PRIVILEGES ON TABLE logs TO ai_issue_genius;
+GRANT ALL PRIVILEGES ON SEQUENCE logs_id_seq TO ai_issue_genius;
+GRANT USAGE ON SCHEMA public TO ai_issue_genius;

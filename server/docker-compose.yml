@@ -5,6 +5,8 @@ services:
     volumes:
       - .:/app
     working_dir: /app
+    environment:
+      DATABASE_URL: postgresql://ai_issue_genius:ai_issue_genius@postgres/ai_issue_genius
     ports:
       - "9000"
     depends_on:
@@ -25,10 +27,10 @@ services:
     ports:
       - "5432"
     environment:
-      - POSTGRES_DB=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_HOST_AUTH_METHOD=md5
+      POSTGRES_DB: ai_issue_genius
+      POSTGRES_USER: ai_issue_genius
+      POSTGRES_PASSWORD: ai_issue_genius
+      POSTGRES_HOST_AUTH_METHOD: trust
     networks:
       - apps_monitoring_net
     healthcheck:

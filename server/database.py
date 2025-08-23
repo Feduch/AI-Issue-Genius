@@ -33,6 +33,18 @@ class Database:
     async def init_db(self):
         """Инициализирует таблицу если она не существует"""
         async with self.pool.acquire() as conn:
+            try:
+                # Предоставляем права на схему public
+                await conn.execute('''
+                    GRANT ALL ON SCHEMA public TO ai_issue_genius;
+                    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ai_issue_genius;
+                    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ai_issue_genius;
+                ''')
+            except Exception as e:
+                print(f"Предупреждение: не удалось предоставить права: {e}")
+                # Продолжаем выполнение, так как права могут быть уже предоставлены
+
+            # Создаем таблицу
             await conn.execute('''
                 CREATE TABLE IF NOT EXISTS logs (
                     id BIGSERIAL PRIMARY KEY,
@@ -43,6 +55,14 @@ class Database:
                     analysis_time TIMESTAMP WITH TIME ZONE
                 )
             ''')
+
+            # Создаем индексы
+            await conn.execute('''
+                CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp);
+                CREATE INDEX IF NOT EXISTS idx_logs_service ON logs(service);
+                CREATE INDEX IF NOT EXISTS idx_logs_analysis_time ON logs(analysis_time);
+            ''')
+
             print("Таблица logs готова к работе")
 
     async def insert_log(self, service: str, log_data: Dict[Any, Any]) -> int:

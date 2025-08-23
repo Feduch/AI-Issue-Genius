@@ -5,3 +5,4 @@ WORKDIR /app
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
+CMD ["uvicorn", "server:app", "--reload", "--host", "0.0.0.0", "--port", "9000"]

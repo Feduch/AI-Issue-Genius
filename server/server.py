@@ -45,6 +45,7 @@ async def log_request_body(request: Request, call_next):
             try:
                 body_json = json.loads(body.decode())
                 logger.info(f"Тело запроса: {json.dumps(body_json, indent=2)}")
+                print(f"Тело запроса: {json.dumps(body_json, indent=2)}")
             except json.JSONDecodeError:
                 logger.info(f"Тело запроса (не JSON): {body.decode()[:500]}...")  # Ограничиваем длину
     except Exception as e:

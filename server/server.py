@@ -36,6 +36,7 @@ async def log_request_body(request: Request, call_next):
     # Логируем входящий запрос
     client_host = request.client.host if request.client else "unknown"
     logger.info(f"Входящий запрос: {request.method} {request.url} от {client_host}")
+    print(f"Входящий запрос: {request.method} {request.url} от {client_host}")
 
     try:
         # Пытаемся прочитать тело запроса для логирования
@@ -61,10 +62,6 @@ async def log_request_body(request: Request, call_next):
 @app.post("/api/logs")
 async def receive_log(log: Dict[Any, Any] = Body(...)):
     """Принимает лог и сохраняет его в PostgreSQL"""
-
-    # Выводим полученные данные в лог
-    logger.info(f"Получен лог: {log}")
-
     try:
         # Извлекаем service из лога или используем значение по умолчанию
         service = log.get('service', 'unknown')

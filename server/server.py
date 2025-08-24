@@ -8,13 +8,18 @@ from datetime import datetime, timezone, timedelta
 from fastapi import FastAPI, Query, Body, HTTPException, Request
 from typing import Optional, Dict, Any
 
-from jinja2.ext import debug
-
 from database import db
 
 app = FastAPI(title="AI Issue Genius API", version="1.0.0")
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
 logger = logging.getLogger(__name__)
+
 
 # Обработчики событий запуска и остановки
 # Обработчики событий запуска и остановки
@@ -36,7 +41,6 @@ async def log_request_body(request: Request, call_next):
     # Логируем входящий запрос
     client_host = request.client.host if request.client else "unknown"
     logger.info(f"Входящий запрос: {request.method} {request.url} от {client_host}")
-    print(f"Входящий запрос: {request.method} {request.url} от {client_host}")
 
     try:
         # Пытаемся прочитать тело запроса для логирования
@@ -45,10 +49,8 @@ async def log_request_body(request: Request, call_next):
             try:
                 body_json = json.loads(body.decode())
                 logger.info(f"Тело запроса: {json.dumps(body_json, indent=2)}")
-                print(f"Тело запроса: {json.dumps(body_json, indent=2)}")
             except json.JSONDecodeError:
                 logger.info(f"Тело запроса (не JSON): {body.decode()[:500]}...")  # Ограничиваем длину
-                print(f"Тело запроса (не JSON): {body.decode()[:500]}...")
     except Exception as e:
         logger.warning(f"Не удалось прочитать тело запроса: {str(e)}")
 

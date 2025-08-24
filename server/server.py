@@ -1,10 +1,11 @@
 import sys
+import json
 import uvicorn
 import logging
 import traceback
 from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
-from fastapi import FastAPI, Query, Body, HTTPException
+from fastapi import FastAPI, Query, Body, HTTPException, Request
 from typing import Optional, Dict, Any
 
 from jinja2.ext import debug
@@ -28,6 +29,33 @@ async def shutdown_event():
     """Очистка при остановке"""
     await db.disconnect()
     print("Приложение остановлено")
+
+
+@app.middleware("http")
+async def log_request_body(request: Request, call_next):
+    # Логируем входящий запрос
+    client_host = request.client.host if request.client else "unknown"
+    logger.info(f"Входящий запрос: {request.method} {request.url} от {client_host}")
+
+    try:
+        # Пытаемся прочитать тело запроса для логирования
+        body = await request.body()
+        if body:
+            try:
+                body_json = json.loads(body.decode())
+                logger.info(f"Тело запроса: {json.dumps(body_json, indent=2)}")
+            except json.JSONDecodeError:
+                logger.info(f"Тело запроса (не JSON): {body.decode()[:500]}...")  # Ограничиваем длину
+    except Exception as e:
+        logger.warning(f"Не удалось прочитать тело запроса: {str(e)}")
+
+    # Продолжаем обработку
+    response = await call_next(request)
+
+    # Логируем ответ
+    logger.info(f"Ответ: {request.method} {request.url} - Status: {response.status_code}")
+
+    return response
 
 
 @app.post("/api/logs")

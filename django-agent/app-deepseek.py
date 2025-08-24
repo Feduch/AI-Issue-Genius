@@ -132,6 +132,9 @@ class LogAnalyzerService:
             
             ДАННЫЕ ДЛЯ АНАЛИЗА:
             
+            ИНФОРМАЦИЯ О ПОЛЬЗОВАТЕЛЕ:
+            - {'Пользователь авторизован. USER ID: ' + ai_request['user']['id'] if ai_request['user']['is_authenticated'] else 'Анонимный'}
+            
             КОНТЕКСТ ОШИБКИ:
             - Время: {ai_request['error_context']['timestamp']}
             - Окружение: {ai_request['error_context']['environment']}
@@ -210,7 +213,7 @@ class LogAnalyzerService:
         return payload
 
 
-    def create_issue(self, payload: Dict[str, Any]) -> str:
+    def create_issue(self, payload: Dict[str, Any], log_data: Dict[str, Any]) -> str:
         """
         Создает issue на основе ответа ИИ агента
         :param payload:
@@ -226,7 +229,7 @@ class LogAnalyzerService:
         headers = {"PRIVATE-TOKEN": GITLAB_TOKEN}
         data = {
             "title": payload.get('title'),
-            "description": f"{payload.get('description')}\n\n{checklist}",
+            "description": f"{payload.get('description')}\n\n{checklist}\n\n##Лог:\n\n{log_data}",
             "labels": f"{payload.get('labels')},priority::{payload.get('priority').lower()}",
         }
 
@@ -294,7 +297,7 @@ class LogAnalyzerService:
                     self.save_analysis(log_id, payload)
 
                     # Создает issue
-                    issue_url = self.create_issue(payload)
+                    issue_url = self.create_issue(payload, log_data)
 
                     # Отправляем в Telegram
                     self.send_telegram_message(analysis, issue_url)

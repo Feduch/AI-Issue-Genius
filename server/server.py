@@ -1,16 +1,19 @@
 import sys
 import uvicorn
+import logging
 import traceback
 from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
 from fastapi import FastAPI, Query, Body, HTTPException
-from typing import Optional, Dict, Any, AsyncIterator
+from typing import Optional, Dict, Any
 
 from jinja2.ext import debug
 
 from database import db
 
 app = FastAPI(title="AI Issue Genius API", version="1.0.0")
+
+logger = logging.getLogger(__name__)
 
 # Обработчики событий запуска и остановки
 # Обработчики событий запуска и остановки
@@ -30,6 +33,9 @@ async def shutdown_event():
 @app.post("/api/logs")
 async def receive_log(log: Dict[Any, Any] = Body(...)):
     """Принимает лог и сохраняет его в PostgreSQL"""
+
+    # Выводим полученные данные в лог
+    logger.info(f"Получен лог: {log}")
 
     try:
         # Извлекаем service из лога или используем значение по умолчанию

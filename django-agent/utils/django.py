@@ -5,6 +5,10 @@ def prepare_ai_request(log_data):
 
     request = {
         "request_type": "error_analysis",
+        "user": {
+            "is_authenticated": log_data["user"]["is_authenticated"],
+            "id": log_data["user"]["id"]
+        },
         "error_context": {
             "timestamp": log_data["timestamp"],
             "environment": log_data["environment"],

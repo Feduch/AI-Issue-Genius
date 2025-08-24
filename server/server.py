@@ -63,8 +63,12 @@ async def log_request_body(request: Request, call_next):
     return response
 
 
+class Log(BaseModel):
+    service: str
+
+
 @app.post("/api/logs")
-async def receive_log(log: Dict[Any, Any] = Body(...)):
+async def receive_log(log: Log):
     """Принимает лог и сохраняет его в PostgreSQL"""
     try:
         # Извлекаем service из лога или используем значение по умолчанию

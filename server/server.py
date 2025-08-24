@@ -63,20 +63,15 @@ async def log_request_body(request: Request, call_next):
     return response
 
 
-class Log(BaseModel):
-    service: str
-
-
 @app.post("/api/logs")
-async def receive_log(log: Log):
+async def receive_log(log: Dict[Any, Any] = Body(...)):
     """Принимает лог и сохраняет его в PostgreSQL"""
     try:
         # Извлекаем service из лога или используем значение по умолчанию
-        log_dict = log.model_dump()
-        service = log_dict.get('service', 'unknown')
+        service = log.get('service', 'unknown')
 
         # Сохраняем в базу данных
-        log_id = await db.insert_log(service, log_dict)
+        log_id = await db.insert_log(service, log)
 
         return {
             "status": "success",

@@ -7,7 +7,7 @@ def prepare_ai_request(log_data):
         "request_type": "error_analysis",
         "user": {
             "is_authenticated": log_data["user"]["is_authenticated"],
-            "id": log_data["user"]["id"]
+            "id": log_data["user"]["id"] if log_data["user"]["is_authenticated"] else None,
         },
         "error_context": {
             "timestamp": log_data["timestamp"],
@@ -18,7 +18,8 @@ def prepare_ai_request(log_data):
             "request_method": log_data["request"]["method"],
             "request_path": log_data["request"]["path"],
             "client_ip": log_data["request"]["client_ip"],
-            "user_authenticated": log_data["user"]["is_authenticated"]
+            "user_authenticated": log_data["user"]["is_authenticated"],
+            "request_body": log_data["request"]["body"]
         },
         "error_details": {
             "type": log_data["error"]["type"],

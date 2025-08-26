@@ -4,7 +4,7 @@
 
 
 curl --request POST \
-     --header "PRIVATE-TOKEN: glpat-HYTb4JZCs5snsQIl3ukeym86MQp1OjF5eTNiCw.01.121oz5jwx" \
+     --header "PRIVATE-TOKEN: glpat-****" \
      --header "Content-Type: application/json" \
      --data '{
        "title": "Новая задача",

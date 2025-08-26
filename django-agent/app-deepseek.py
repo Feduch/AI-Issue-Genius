@@ -142,6 +142,7 @@ class LogAnalyzerService:
             - Сервис: {ai_request['error_context']['service']}
             - Метод: {ai_request['error_context']['request_method']}
             - Путь: {ai_request['error_context']['request_path']}
+            - Body: {ai_request['error_context']['request_body']}
 
             ДЕТАЛИ ОШИБКИ:
             Тип: {ai_request['error_details']['type']}
@@ -224,12 +225,20 @@ class LogAnalyzerService:
         for item in payload.get('checklist', []):
             checklist += f"- [ ] {item}\n"
 
+        body = log_data["request"]["body"]
+
+        description = (
+            f"{payload.get('description')}\n\n"
+            f"Body:\n\n {body}\n\n"
+            f"{checklist}\n\n"
+            f"Лог:\n\n{log_data}"
+        )
 
         url = "https://gitlab.com/api/v4/projects/10046060/issues"
         headers = {"PRIVATE-TOKEN": GITLAB_TOKEN}
         data = {
             "title": payload.get('title'),
-            "description": f"{payload.get('description')}\n\n{checklist}\n\n##Лог:\n\n{log_data}",
+            "description": description,
             "labels": f"{payload.get('labels')},priority::{payload.get('priority').lower()}",
         }
 

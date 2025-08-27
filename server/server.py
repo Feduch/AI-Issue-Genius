@@ -177,35 +177,27 @@ async def register_user(user: UserCreate):
 @app.post("/api/auth/login", response_model=Token)
 async def login_user(user: UserLogin):
     """Аутентификация пользователя и получение JWT токена"""
-    try:
-        # Аутентифицируем пользователя
-        authenticated_user = await db.authenticate_user(user.email, user.password)
-        logger.info(f"authenticated_user: {authenticated_user}")
-        if not authenticated_user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Неверный email или пароль",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        # Создаем токен
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
-            data={"sub": authenticated_user["email"]},
-            expires_delta=access_token_expires
-        )
-
-        return {
-            "access_token": access_token,
-            "token_type": "bearer"
-        }
-
-    except Exception as e:
-        logger.error(f"Ошибка при аутентификации: {str(e)}")
+    # Аутентифицируем пользователя
+    authenticated_user = await db.authenticate_user(user.email, user.password)
+    if not authenticated_user:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Внутренняя ошибка сервера при аутентификации"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Неверный email или пароль",
+            headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Создаем токен
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": authenticated_user["email"]},
+        expires_delta=access_token_expires
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
 
 @app.get("/api/auth/me", response_model=UserResponse)
 async def get_current_user_info(current_user: Dict[str, Any] = Depends(get_current_user)):

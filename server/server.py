@@ -168,7 +168,7 @@ async def register_user(user: UserCreate):
         return new_user
 
     except Exception as e:
-        logger.error(f"Ошибка при регистрации пользователя: {str(e)}")
+        logger.error(f"Ошибка при регистрации пользователя: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Внутренняя ошибка сервера при регистрации"

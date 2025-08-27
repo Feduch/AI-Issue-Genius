@@ -1,3 +1,4 @@
+import os
 import sys
 import json
 import uvicorn
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 # Настройки JWT
-SECRET_KEY = "your-secret-key-change-in-production"  # Замените в продакшене!
+SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

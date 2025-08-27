@@ -7,7 +7,7 @@ services:
     working_dir: /app
     environment:
       DATABASE_URL: postgresql://ai_issue_genius:ai_issue_genius@ai-issue-genius-db/ai_issue_genius
-      SECRET_KEY:
+      SECRET_KEY: fu93oX-G1XJXAn_UY9ZE7gQL0hN_V1DuUV9GJ9WHo74
     ports:
       - "9000"
     depends_on:

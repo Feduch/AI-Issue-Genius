@@ -11,10 +11,30 @@ from datetime import datetime, timezone, timedelta
 from fastapi import FastAPI, Query, Body, HTTPException, Request, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, Dict, Any
+from fastapi.middleware.cors import CORSMiddleware
 
 from database import db
 
 app = FastAPI(title="AI Issue Genius API", version="1.0.0")
+
+# Настройка CORS
+origins = [
+    "http://localhost:3000",  # React dev server
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "https://solar.ninja360.ru",  # ваш production домен
+    "https://*.ninja360.ru",     # все поддомены
+]
+
+# Для тестирования разрешаем все origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Разрешаем все origins для тестирования
+    allow_credentials=True,
+    allow_methods=["*"],  # Разрешаем все HTTP методы
+    allow_headers=["*"],  # Разрешаем все заголовки
+)
 
 logging.basicConfig(
     level=logging.INFO,

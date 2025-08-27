@@ -23,3 +23,15 @@ CREATE INDEX IF NOT EXISTS idx_logs_analysis_time ON logs(analysis_time);
 GRANT ALL PRIVILEGES ON TABLE logs TO ai_issue_genius;
 GRANT ALL PRIVILEGES ON SEQUENCE logs_id_seq TO ai_issue_genius;
 GRANT USAGE ON SCHEMA public TO ai_issue_genius;
+
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_active ON users(is_active);

@@ -3,9 +3,12 @@ import json
 import uvicorn
 import logging
 import traceback
+import jwt
+from jwt.exceptions import InvalidTokenError
 from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
-from fastapi import FastAPI, Query, Body, HTTPException, Request
+from fastapi import FastAPI, Query, Body, HTTPException, Request, Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, Dict, Any
 
 from database import db
@@ -19,6 +22,75 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+
+# Настройки JWT
+SECRET_KEY = "your-secret-key-change-in-production"  # Замените в продакшене!
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# Схемы безопасности
+security = HTTPBearer()
+
+# Pydantic модели
+class UserCreate(BaseModel):
+    email: str
+    password: str
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    created_at: datetime
+    is_active: bool
+
+
+# Вспомогательные функции
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """Создает JWT токен"""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(tz=timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(tz=timezone.utc) + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Получает текущего пользователя из JWT токена"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"Authenticate": "Bearer"},
+    )
+
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+        token_data = TokenData(email=email)
+    except InvalidTokenError:
+        raise credentials_exception
+
+    user = await db.get_user_by_email(token_data.email)
+    if user is None:
+        raise credentials_exception
+
+    return user
 
 
 # Обработчики событий запуска и остановки
@@ -61,6 +133,82 @@ async def log_request_body(request: Request, call_next):
     logger.info(f"Ответ: {request.method} {request.url} - Status: {response.status_code}")
 
     return response
+
+
+# API endpoints для аутентификации
+@app.post("/api/auth/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def register_user(user: UserCreate):
+    """Регистрация нового пользователя"""
+    try:
+        # Проверяем, существует ли пользователь
+        existing_user = await db.get_user_by_email(user.email)
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Пользователь с таким email уже существует"
+            )
+
+        # Создаем пользователя
+        user_id = await db.create_user(user.email, user.password)
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Не удалось создать пользователя"
+            )
+
+        # Получаем данные созданного пользователя
+        new_user = await db.get_user_by_id(user_id)
+        if not new_user:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Пользователь создан, но не найден"
+            )
+
+        return new_user
+
+    except Exception as e:
+        logger.error(f"Ошибка при регистрации пользователя: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Внутренняя ошибка сервера при регистрации"
+        )
+
+@app.post("/api/auth/login", response_model=Token)
+async def login_user(user: UserLogin):
+    """Аутентификация пользователя и получение JWT токена"""
+    try:
+        # Аутентифицируем пользователя
+        authenticated_user = await db.authenticate_user(user.email, user.password)
+        if not authenticated_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Неверный email или пароль",
+                headers={"Authenticate": "Bearer"},
+            )
+
+        # Создаем токен
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": authenticated_user["email"]},
+            expires_delta=access_token_expires
+        )
+
+        return {
+            "access_token": access_token,
+            "token_type": "bearer"
+        }
+
+    except Exception as e:
+        logger.error(f"Ошибка при аутентификации: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Внутренняя ошибка сервера при аутентификации"
+        )
+
+@app.get("/api/auth/me", response_model=UserResponse)
+async def get_current_user_info(current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Получение информации о текущем пользователе"""
+    return current_user
 
 
 @app.post("/api/logs")
@@ -132,7 +280,6 @@ async def get_logs(
             "count": len(logs),
             "logs": logs
         }
-
 
     except Exception as e:
         traceback.print_exception(*sys.exc_info())

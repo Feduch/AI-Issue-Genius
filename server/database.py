@@ -1,6 +1,7 @@
 import os
 import json
 import asyncpg
+import bcrypt
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
@@ -28,6 +29,155 @@ class Database:
         if self.pool:
             await self.pool.close()
             print("Подключение к БД закрыто")
+
+        # Методы для работы с пользователями
+
+    async def create_user(self, email: str, password: str) -> Optional[int]:
+        """Создает нового пользователя с хешированным паролем"""
+        if not self.pool:
+            raise Exception("Database connection not established")
+
+        # Хешируем пароль
+        hashed_password = self._hash_password(password)
+
+        async with self.pool.acquire() as conn:
+            try:
+                query = """
+                       INSERT INTO users (email, password_hash, created_at)
+                       VALUES ($1, $2, NOW())
+                       RETURNING id
+                   """
+
+                user_id = await conn.fetchval(query, email, hashed_password)
+                return user_id
+            except asyncpg.exceptions.UniqueViolationError:
+                return None  # Пользователь уже существует
+
+    async def authenticate_user(self, email: str, password: str) -> Optional[Dict[str, Any]]:
+        """Аутентифицирует пользователя по email и паролю"""
+        if not self.pool:
+            raise Exception("Database connection not established")
+
+        async with self.pool.acquire() as conn:
+            query = """
+                   SELECT id, email, password_hash, created_at, is_active
+                   FROM users 
+                   WHERE email = $1 AND is_active = true
+               """
+
+            row = await conn.fetchrow(query, email)
+            if not row:
+                return None
+
+            user_data = dict(row)
+
+            # Проверяем пароль
+            if self._verify_password(password, user_data['password_hash']):
+                # Не возвращаем хеш пароля в результатах
+                del user_data['password_hash']
+                return user_data
+
+            return None
+
+    async def get_user_by_id(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Получает пользователя по ID"""
+        if not self.pool:
+            raise Exception("Database connection not established")
+
+        async with self.pool.acquire() as conn:
+            query = """
+                   SELECT id, email, created_at, is_active
+                   FROM users 
+                   WHERE id = $1
+               """
+
+            row = await conn.fetchrow(query, user_id)
+            if row:
+                return dict(row)
+            return None
+
+    async def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        """Получает пользователя по email"""
+        if not self.pool:
+            raise Exception("Database connection not established")
+
+        async with self.pool.acquire() as conn:
+            query = """
+                   SELECT id, email, created_at, is_active
+                   FROM users 
+                   WHERE email = $1
+               """
+
+            row = await conn.fetchrow(query, email)
+            if row:
+                return dict(row)
+            return None
+
+    async def update_user_password(self, user_id: int, new_password: str) -> bool:
+        """Обновляет пароль пользователя"""
+        if not self.pool:
+            raise Exception("Database connection not established")
+
+        hashed_password = self._hash_password(new_password)
+
+        async with self.pool.acquire() as conn:
+            query = """
+                   UPDATE users 
+                   SET password_hash = $1
+                   WHERE id = $2
+               """
+
+            result = await conn.execute(query, hashed_password, user_id)
+            return "UPDATE 1" in result
+
+    async def deactivate_user(self, user_id: int) -> bool:
+        """Деактивирует пользователя"""
+        if not self.pool:
+            raise Exception("Database connection not established")
+
+        async with self.pool.acquire() as conn:
+            query = """
+                   UPDATE users 
+                   SET is_active = false
+                   WHERE id = $1
+               """
+
+            result = await conn.execute(query, user_id)
+            return "UPDATE 1" in result
+
+    async def get_all_users(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Получает всех пользователей"""
+        if not self.pool:
+            raise Exception("Database connection not established")
+
+        async with self.pool.acquire() as conn:
+            query = """
+                   SELECT id, email, created_at, is_active
+                   FROM users 
+                   ORDER BY created_at DESC
+                   LIMIT $1
+               """
+
+            rows = await conn.fetch(query, limit)
+            return [dict(row) for row in rows]
+
+        # Вспомогательные методы для работы с паролями
+
+    def _hash_password(self, password: str) -> str:
+        """Хеширует пароль с использованием bcrypt"""
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+        return hashed.decode('utf-8')
+
+    def _verify_password(self, plain_password: str, hashed_password: str) -> bool:
+        """Проверяет пароль против хеша"""
+        try:
+            return bcrypt.checkpw(
+                plain_password.encode('utf-8'),
+                hashed_password.encode('utf-8')
+            )
+        except (ValueError, TypeError):
+            return False
 
     async def insert_log(self, service: str, log_data: Dict[Any, Any]) -> int:
         """Вставляет лог в базу данных и возвращает ID"""

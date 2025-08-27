@@ -180,6 +180,7 @@ async def login_user(user: UserLogin):
     try:
         # Аутентифицируем пользователя
         authenticated_user = await db.authenticate_user(user.email, user.password)
+        logger.info(f"authenticated_user: {authenticated_user}")
         if not authenticated_user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

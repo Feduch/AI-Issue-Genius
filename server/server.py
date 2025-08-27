@@ -74,7 +74,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
-        headers={"Authenticate": "Bearer"},
+        headers={"WWW-Authenticate": "Bearer"},
     )
 
     try:
@@ -121,9 +121,9 @@ async def log_request_body(request: Request, call_next):
         if body:
             try:
                 body_json = json.loads(body.decode())
-                logger.info(f"Тело запроса: {json.dumps(body_json, indent=2)}")
+                logger.debug(f"Тело запроса: {json.dumps(body_json, indent=2)}")
             except json.JSONDecodeError:
-                logger.info(f"Тело запроса (не JSON): {body.decode()[:500]}...")  # Ограничиваем длину
+                logger.debug(f"Тело запроса (не JSON): {body.decode()[:500]}...")  # Ограничиваем длину
     except Exception as e:
         logger.warning(f"Не удалось прочитать тело запроса: {str(e)}")
 
@@ -184,7 +184,7 @@ async def login_user(user: UserLogin):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Неверный email или пароль",
-                headers={"Authenticate": "Bearer"},
+                headers={"WWW-Authenticate": "Bearer"},
             )
 
         # Создаем токен

@@ -22,3 +22,11 @@ CREATE TABLE service_logs (
     ai_analysis JSONB,
     analysis_time TIMESTAMP WITH TIME ZONE
 );
+
+curl -X POST "https://solar.ninja360.ru/api/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@ninja360.ru", "password": "dfkmufkkf"}'
+
+curl -X POST "https://solar.ninja360.ru/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@ninja360.ru", "password": "securepassword123"}'

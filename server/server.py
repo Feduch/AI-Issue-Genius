@@ -194,6 +194,11 @@ async def register_user(user: UserCreate):
             detail="Внутренняя ошибка сервера при регистрации"
         )
 
+@app.options("/api/auth/login")
+async def options_login():
+    """Обработка OPTIONS запроса для CORS"""
+    return {"message": "OK"}
+
 @app.post("/api/auth/login", response_model=Token)
 async def login_user(user: UserLogin):
     """Аутентификация пользователя и получение JWT токена"""

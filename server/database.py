@@ -74,7 +74,7 @@ class Database:
             # Проверяем пароль
             if self._verify_password(password, user_data['password_hash']):
                 # Не возвращаем хеш пароля в результатах
-                del user_data['password_hash']
+                user_data.pop('password_hash', None)
                 return user_data
 
             return None

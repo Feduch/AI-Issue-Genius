@@ -1,6 +1,6 @@
 stages:
-  - build
-  - deploy
+  - build-server
+  - build-agent
 
 variables:
   CI_REGISTRY_IMAGE: $CI_REGISTRY/$CI_PROJECT_PATH
@@ -14,31 +14,8 @@ cache:
   paths:
     - .cache/
 
-build-ai-issue-genius-agent:
-  stage: build
-  image: docker:20.10.16
-  services:
-      - name: docker:20.10.16-dind
-        alias: docker
-  variables:
-    DOCKER_TLS_CERTDIR: "/certs"
-    DOCKER_DRIVER: overlay2
-#  before_script:
-#    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-  script:
-    - echo "Building ai-issue-genius-agent image from django-agent directory..."
-    - cd django-agent
-    - docker build -t registry.gitlab.com/ai8595334/ai-issue-genius/ai-issue-genius-agent:$IMAGE_TAG .
-    - docker push registry.gitlab.com/ai8595334/ai-issue-genius/ai-issue-genius-agent:$IMAGE_TAG
-  rules:
-    - if: $CI_COMMIT_BRANCH
-      exists:
-        - django-agent/Dockerfile
-  tags:
-    - debian
-
 build-ai-issue-genius-server:
-  stage: build
+  stage: build-server
   image: docker:20.10.16
   services:
     - name: docker:20.10.16-dind
@@ -57,6 +34,29 @@ build-ai-issue-genius-server:
     - if: $CI_COMMIT_BRANCH
       exists:
         - server/Dockerfile
+  tags:
+    - debian
+
+build-ai-issue-genius-agent:
+  stage: build-agent
+  image: docker:20.10.16
+  services:
+      - name: docker:20.10.16-dind
+        alias: docker
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_DRIVER: overlay2
+#  before_script:
+#    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - echo "Building ai-issue-genius-agent image from django-agent directory..."
+    - cd django-agent
+    - docker build -t registry.gitlab.com/ai8595334/ai-issue-genius/ai-issue-genius-agent:$IMAGE_TAG .
+    - docker push registry.gitlab.com/ai8595334/ai-issue-genius/ai-issue-genius-agent:$IMAGE_TAG
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      exists:
+        - django-agent/Dockerfile
   tags:
     - debian
 #

@@ -24,8 +24,8 @@ build-ai-issue-genius-agent:
   script:
     - echo "Building ai-issue-genius-agent image from django-agent directory..."
     - cd django-agent
-    - docker build -t $CI_REGISTRY_IMAGE/ai-issue-genius-agent:$IMAGE_TAG .
-    - docker push $CI_REGISTRY_IMAGE/ai-issue-genius-agent:$IMAGE_TAG
+    - docker build -t registry.gitlab.com/ai8595334/ai-issue-genius/ai-issue-genius-agent:$IMAGE_TAG .
+    - docker push registry.gitlab.com/ai8595334/ai-issue-genius/ai-issue-genius-agent:$IMAGE_TAG
   rules:
     - if: $CI_COMMIT_BRANCH
       exists:
@@ -46,8 +46,8 @@ build-ai-issue-genius-server:
   script:
     - echo "Building ai-issue-genius-server image from server directory..."
     - cd server
-    - docker build -t $CI_REGISTRY_IMAGE/ai-issue-genius-server:$IMAGE_TAG .
-    - docker push $CI_REGISTRY_IMAGE/ai-issue-genius-server:$IMAGE_TAG
+    - docker build -t registry.gitlab.com/ai8595334/ai-issue-genius/ai-issue-genius-server:$IMAGE_TAG .
+    - docker push registry.gitlab.com/ai8595334/ai-issue-genius/ai-issue-genius-server:$IMAGE_TAG
   rules:
     - if: $CI_COMMIT_BRANCH
       exists:

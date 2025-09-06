@@ -18,7 +18,7 @@ build-ai-issue-genius-server:
     DOCKER_TLS_CERTDIR: "/certs"
     DOCKER_DRIVER: overlay2
   before_script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD registry.gitlab.com
   script:
     - echo "Building ai-issue-genius-server image from server directory..."
     - cd server
@@ -38,7 +38,7 @@ build-ai-issue-genius-agent:
     DOCKER_TLS_CERTDIR: "/certs"
     DOCKER_DRIVER: overlay2
   before_script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD registry.gitlab.com
   script:
     - echo "Building ai-issue-genius-agent image from django-agent directory..."
     - cd django-agent

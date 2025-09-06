@@ -6,13 +6,20 @@ services:
       - .:/app
     working_dir: /app
     environment:
-      DATABASE_URL: postgresql://ai_issue_genius:ai_issue_genius@postgres/ai_issue_genius
+      DATABASE_URL: postgresql://ai_issue_genius:ai_issue_genius@ai-issue-genius-db/ai_issue_genius
+      SECRET_KEY: fu93oX-G1XJXAn_UY9ZE7gQL0hN_V1DuUV9GJ9WHo74
     ports:
       - "9000"
     depends_on:
       - ai-issue-genius-db
     networks:
       - apps_monitoring_net
+    # Добавляем healthcheck для сервера
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/api/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     logging:
       driver: "json-file"
       options:
@@ -27,15 +34,22 @@ services:
     ports:
       - "5432"
     environment:
-      POSTGRES_DB: ai_issue_genius
-      POSTGRES_USER: ai_issue_genius
-      POSTGRES_PASSWORD: ai_issue_genius
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
       POSTGRES_HOST_AUTH_METHOD: trust
+    command: >
+      postgres 
+      -c log_statement=ddl
+      -c log_duration=on 
+      -c log_min_duration_statement=1000
+      -c log_connections=on 
+      -c log_disconnections=on
     networks:
       - apps_monitoring_net
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
-      interval: 5s
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d postgres" ]
+      interval: 60s
       timeout: 5s
       retries: 5
     logging:

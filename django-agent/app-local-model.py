@@ -3,8 +3,7 @@ import json
 import time
 import logging
 from utils.django import prepare_ai_request
-from datetime import datetime, timedelta
-from typing import List, Dict, Any
+from typing import List, Dict
 from llama_cpp import Llama
 
 # Настройка логирования
@@ -16,8 +15,8 @@ class LogAnalyzerService:
     def __init__(self, model_path: str, telegram_bot_token: str, telegram_chat_id: str):
         self.llm = Llama(
             model_path=model_path,
-            n_ctx=16384,
-            n_threads=12,
+            n_ctx=4000,
+            n_threads=8,
             n_gpu_layers=0,
             temperature=0.1,
             top_p=0.9,
@@ -34,7 +33,7 @@ class LogAnalyzerService:
         self.telegram_chat_id = telegram_chat_id
         self.api_url = "https://solar.ninja360.ru/api/logs"
 
-    def fetch_django_logs(self) -> List[Dict]:
+    def fetch_logs(self) -> List[Dict]:
         """Получение логов Django за указанный период"""
         try:
             params = {
@@ -50,8 +49,10 @@ class LogAnalyzerService:
             )
             response.raise_for_status()
 
-            logs = response.json()
-            logger.info(f"Получено {len(logs)} логов Django")
+            count = response.json().get('count')
+            logs = response.json().get('logs')
+
+            logger.info(f"Получено {count} логов Django")
             return logs
 
         except requests.exceptions.RequestException as e:
@@ -69,8 +70,6 @@ class LogAnalyzerService:
 
             # Создаем промпт для модели
             prompt = self.create_analysis_prompt(ai_request)
-
-            logger.info(f"prompt {prompt}")
 
             # Формируем сообщения для chat-style модели
             messages = [
@@ -101,21 +100,23 @@ class LogAnalyzerService:
     def send_telegram_message(self, message: str) -> bool:
         """Отправка сообщения в Telegram с разбивкой на части"""
         try:
+            logger.info(f"message: {message}")
+
             # Разбиваем сообщение на части по 4000 символов
-            max_length = 4000
-            messages = [message[i:i + max_length] for i in range(0, len(message), max_length)]
+            #max_length = 4000
+            #messages = [message[i:i + max_length] for i in range(0, len(message), max_length)]
 
-            for i, msg_part in enumerate(messages):
-                url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage"
-                payload = {
-                    'chat_id': self.telegram_chat_id,
-                    'text': f"Часть {i + 1}/{len(messages)}\n\n{msg_part}",
-                    'parse_mode': 'HTML'
-                }
+            # for i, msg_part in enumerate(messages):
+            url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage"
+            payload = {
+                'chat_id': self.telegram_chat_id,
+                'text': message,
+                'parse_mode': 'HTML'
+            }
 
-                response = requests.post(url, json=payload, timeout=10)
-                response.raise_for_status()
-                time.sleep(1)  # Пауза между сообщениями
+            response = requests.post(url, json=payload, timeout=10)
+            response.raise_for_status()
+            time.sleep(1)  # Пауза между сообщениями
 
             return True
         except Exception as e:
@@ -190,10 +191,22 @@ class LogAnalyzerService:
                     Labels: "bug,database,backend"
                     Assignee: "backend"
 
-                    Будь конкретным и практичным в рекомендациях!
+                    Будь конкретным и практичным в рекомендациях, ответ дай на русском языке!
                 """
-
+        logger.info(prompt)
         return prompt
+
+
+    def save_analysis(self, log_id: int, analysis: str):
+        """
+        Сохраняет ответ от ИИ в базу
+        :param analysis:
+        :return:
+        """
+        logger.info(f"log_id ------------- {log_id} ------------------------")
+        logger.info(analysis)
+        logger.info(f"=======================================================")
+
 
 
     def run_analysis_cycle(self, interval_minutes: int = 30):
@@ -203,7 +216,7 @@ class LogAnalyzerService:
         while True:
             try:
                 # Получаем логи
-                logs = self.fetch_django_logs()  # За последний час
+                logs = self.fetch_logs()  # За последний час
 
                 if not logs:
                     logger.info("Новых ошибок не обнаружено")
@@ -212,7 +225,13 @@ class LogAnalyzerService:
 
                 # Анализируем каждую ошибку
                 for log in logs:
-                    analysis = self.analyze_log(log)
+                    log_id = log.get('id')
+                    log_data = json.loads(log.get('log'))
+
+                    analysis = self.analyze_log(log_data)
+
+                    # Сохранить ответ от ИИ
+                    self.save_analysis(log_id, analysis)
 
                     # Отправляем в Telegram
                     self.send_telegram_message(analysis)

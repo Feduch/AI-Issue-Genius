@@ -4,7 +4,7 @@
 
 
 curl --request POST \
-     --header "PRIVATE-TOKEN: glpat-HYTb4JZCs5snsQIl3ukeym86MQp1OjF5eTNiCw.01.121oz5jwx" \
+     --header "PRIVATE-TOKEN: glpat-****" \
      --header "Content-Type: application/json" \
      --data '{
        "title": "Новая задача",
@@ -22,3 +22,8 @@ CREATE TABLE service_logs (
     ai_analysis JSONB,
     analysis_time TIMESTAMP WITH TIME ZONE
 );
+
+
+curl -X POST "https://solar.ninja360.ru/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@ninja360.ru", "password": "securepassword123"}'

@@ -24,7 +24,7 @@ class LogAnalyzerService:
         self.telegram_chat_id = telegram_chat_id
         self.api_url = "https://solar.ninja360.ru/api/logs"
 
-    def fetch_django_logs(self) -> List[Dict]:
+    def fetch_logs(self) -> List[Dict]:
         """Получение логов Django за указанный период"""
         try:
             params = {
@@ -40,8 +40,10 @@ class LogAnalyzerService:
             )
             response.raise_for_status()
 
-            logs = response.json()
-            logger.info(f"Получено {len(logs)} логов Django")
+            count = response.json().get('count')
+            logs = response.json().get('logs')
+
+            logger.info(f"Получено {count} логов Django")
             return logs
 
         except requests.exceptions.RequestException as e:
@@ -103,21 +105,16 @@ class LogAnalyzerService:
     def send_telegram_message(self, message: str, issue_url: str) -> bool:
         """Отправка сообщения в Telegram с разбивкой на части"""
         try:
-            # Разбиваем сообщение на части по 4000 символов
-            max_length = 4000
-            messages = [message[i:i + max_length] for i in range(0, len(message), max_length)]
+            url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage"
+            payload = {
+                'chat_id': self.telegram_chat_id,
+                'text': f"{message}\n\n[Ссылка на issue]({issue_url})",
+                'parse_mode': 'Markdown'
+            }
+            response = requests.post(url, json=payload, timeout=10)
+            response.raise_for_status()
+            time.sleep(1)  # Пауза между сообщениями
 
-            for i, msg_part in enumerate(messages):
-                url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage"
-                payload = {
-                    'chat_id': self.telegram_chat_id,
-                    'text': f"Часть {i + 1}/{len(messages)}\n\n{msg_part}\n\n[Ссылка на issue]({issue_url})",
-                    'parse_mode': 'Markdown'
-                }
-
-                response = requests.post(url, json=payload, timeout=10)
-                response.raise_for_status()
-                time.sleep(1)  # Пауза между сообщениями
 
             return True
         except Exception as e:
@@ -135,6 +132,9 @@ class LogAnalyzerService:
             
             ДАННЫЕ ДЛЯ АНАЛИЗА:
             
+            ИНФОРМАЦИЯ О ПОЛЬЗОВАТЕЛЕ:
+            - {'Пользователь авторизован. USER ID: ' + ai_request['user']['id'] if ai_request['user']['is_authenticated'] else 'Анонимный'}
+            
             КОНТЕКСТ ОШИБКИ:
             - Время: {ai_request['error_context']['timestamp']}
             - Окружение: {ai_request['error_context']['environment']}
@@ -142,6 +142,7 @@ class LogAnalyzerService:
             - Сервис: {ai_request['error_context']['service']}
             - Метод: {ai_request['error_context']['request_method']}
             - Путь: {ai_request['error_context']['request_path']}
+            - Body: {ai_request['error_context']['request_body']}
 
             ДЕТАЛИ ОШИБКИ:
             Тип: {ai_request['error_details']['type']}
@@ -198,36 +199,84 @@ class LogAnalyzerService:
 
         return prompt
 
-    def create_issue(self, payload: str):
+    def prepare_analysis(self, payload: str) -> Dict[str, Any]:
         """
-        Создает issue на основе ответа ИИ агента
+        Получает json из анализа
         :param payload:
         :return:
         """
-
         pattern = r'```json\s*(.*?)\s*```'
         match = re.search(pattern, payload, re.DOTALL)
         if match:
             json_string = match.group(1).strip()
             payload = json.loads(json_string)
 
+        return payload
+
+
+    def create_issue(self, payload: Dict[str, Any], log_data: Dict[str, Any]) -> str:
+        """
+        Создает issue на основе ответа ИИ агента
+        :param payload:
+        :return: url to issue
+        """
         checklist = '## Чек-лист\n\n'
 
         for item in payload.get('checklist', []):
             checklist += f"- [ ] {item}\n"
 
+        body = log_data["request"]["body"]
+
+        description = (
+            f"{payload.get('description')}\n\n"
+            f"Body:\n\n {body}\n\n"
+            f"{checklist}\n\n"
+            f"Лог:\n\n{log_data}"
+        )
 
         url = "https://gitlab.com/api/v4/projects/10046060/issues"
         headers = {"PRIVATE-TOKEN": GITLAB_TOKEN}
         data = {
             "title": payload.get('title'),
-            "description": f"{payload.get('description')}\n\n{checklist}",
+            "description": description,
             "labels": f"{payload.get('labels')},priority::{payload.get('priority').lower()}",
         }
 
         response = requests.post(url, headers=headers, json=data)
-        # print(response.json())
         return response.json().get('web_url')
+
+
+    def save_analysis(self, log_id: int, analysis: Dict[str, Any]):
+        """
+        Сохраняет ответ от ИИ в базу
+        :param analysis:
+        :return:
+        """
+        try:
+            logger.info(f"Сохраняет анализ для лога log_id {log_id}")
+
+            headers = {
+                'Content-Type': 'application/json'
+            }
+
+            response = requests.put(
+                self.api_url,
+                json={
+                    'log_id': log_id,
+                    'analysis': analysis
+                },
+                timeout=30,
+                headers=headers
+            )
+            response.raise_for_status()
+
+            logs = response.json()
+            logger.info(f"Анализ лога успешно сохранен log_id {log_id} logs {logs}")
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Ошибка при получении логов: {e}")
+        except json.JSONDecodeError as e:
+            logger.error(f"Ошибка парсинга JSON: {e}")
 
 
     def run_analysis_cycle(self, interval_minutes: int = 30):
@@ -237,7 +286,7 @@ class LogAnalyzerService:
         while True:
             try:
                 # Получаем логи
-                logs = self.fetch_django_logs()  # За последний час
+                logs = self.fetch_logs()  # За последний час
 
                 if not logs:
                     logger.info("Новых ошибок не обнаружено")
@@ -246,10 +295,18 @@ class LogAnalyzerService:
 
                 # Анализируем каждую ошибку
                 for log in logs:
-                    analysis = self.analyze_log(log)
+                    log_id = log.get('id')
+                    log_data = json.loads(log.get('log'))
+
+                    analysis = self.analyze_log(log_data)
+
+                    payload = self.prepare_analysis(analysis)
+
+                    # Сохранить ответ от ИИ
+                    self.save_analysis(log_id, payload)
 
                     # Создает issue
-                    issue_url = self.create_issue(analysis)
+                    issue_url = self.create_issue(payload, log_data)
 
                     # Отправляем в Telegram
                     self.send_telegram_message(analysis, issue_url)

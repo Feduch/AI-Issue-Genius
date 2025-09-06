@@ -5,6 +5,9 @@ stages:
 variables:
   CI_REGISTRY_IMAGE: $CI_REGISTRY/$CI_PROJECT_PATH
   IMAGE_TAG: "latest"
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_DRIVER: overlay2
 
 cache:
   key: ${CI_COMMIT_REF_SLUG}
@@ -15,7 +18,8 @@ build-ai-issue-genius-agent:
   stage: build
   image: docker:20.10.16
   services:
-    - docker:20.10.16-dind
+      - name: docker:20.10.16-dind
+        alias: docker
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
     DOCKER_DRIVER: overlay2
@@ -37,7 +41,8 @@ build-ai-issue-genius-server:
   stage: build
   image: docker:20.10.16
   services:
-    - docker:20.10.16-dind
+    - name: docker:20.10.16-dind
+      alias: docker
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
     DOCKER_DRIVER: overlay2

@@ -3,7 +3,6 @@ stages:
   - build-agent
 
 variables:
-  CI_REGISTRY_IMAGE: $CI_REGISTRY/$CI_PROJECT_PATH
   IMAGE_TAG: "latest"
 
 cache:

@@ -1,0 +1,68 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  CI_REGISTRY_IMAGE: $CI_REGISTRY/$CI_PROJECT_PATH
+  IMAGE_TAG: latest
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .cache/
+
+build-ai-issue-genius-agent:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_DRIVER: overlay2
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - echo "Building ai-issue-genius-agent image from django-agent directory..."
+    - cd django-agent
+    - docker build -t $CI_REGISTRY_IMAGE/ai-issue-genius-agent:$IMAGE_TAG .
+    - docker push $CI_REGISTRY_IMAGE/ai-issue-genius-agent:$IMAGE_TAG
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      exists:
+        - django-agent/Dockerfile
+  tags:
+    - docker
+
+build-ai-issue-genius-server:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_DRIVER: overlay2
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - echo "Building ai-issue-genius-server image from server directory..."
+    - cd server
+    - docker build -t $CI_REGISTRY_IMAGE/ai-issue-genius-server:$IMAGE_TAG .
+    - docker push $CI_REGISTRY_IMAGE/ai-issue-genius-server:$IMAGE_TAG
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      exists:
+        - server/Dockerfile
+  tags:
+    - docker
+
+deploy:
+  stage: deploy
+  image: alpine:latest
+  script:
+    - echo "Deploying images:"
+    - echo "Agent: $CI_REGISTRY_IMAGE/ai-issue-genius-agent:$IMAGE_TAG"
+    - echo "Server: $CI_REGISTRY_IMAGE/ai-issue-genius-server:$IMAGE_TAG"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  tags:
+    - docker

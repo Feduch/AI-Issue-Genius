@@ -325,7 +325,6 @@ class LogAnalyzerService:
             # Ожидание следующего цикла
             time.sleep(interval_minutes * 60)
 
-
 # Конфигурация
 CONFIG = {
     'telegram_bot_token': TELEGRAM_TOKEN,  # Замените на реальный токен

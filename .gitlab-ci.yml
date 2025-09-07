@@ -1,0 +1,65 @@
+stages:
+  - build-server
+  - build-agent
+
+variables:
+  IMAGE_TAG: "latest"
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .cache/
+
+build-ai-issue-genius-server:
+  stage: build-server
+  image: docker:20.10.16
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_DRIVER: overlay2
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD registry.gitlab.com
+  script:
+    - echo "Building ai-issue-genius-server image from server directory..."
+    - cd server
+    - docker build -t registry.gitlab.com/ai8595334/ai-issue-genius/ai-issue-genius-server:$IMAGE_TAG .
+    - docker push registry.gitlab.com/ai8595334/ai-issue-genius/ai-issue-genius-server:$IMAGE_TAG
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      exists:
+        - server/Dockerfile
+  tags:
+    - debian
+
+build-ai-issue-genius-agent:
+  stage: build-agent
+  image: docker:20.10.16
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_DRIVER: overlay2
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD registry.gitlab.com
+  script:
+    - echo "Building ai-issue-genius-agent image from django-agent directory..."
+    - cd django-agent
+    - docker build -t registry.gitlab.com/ai8595334/ai-issue-genius/ai-issue-genius-agent:$IMAGE_TAG .
+    - docker push registry.gitlab.com/ai8595334/ai-issue-genius/ai-issue-genius-agent:$IMAGE_TAG
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      exists:
+        - django-agent/Dockerfile
+  tags:
+    - debian
+#
+#deploy:
+#  stage: deploy
+#  image: alpine:latest
+#  script:
+#    - echo "Deploying agent image: $CI_REGISTRY_IMAGE/ai-issue-genius-agent:$IMAGE_TAG"
+#    - echo "Deploying server image: $CI_REGISTRY_IMAGE/ai-issue-genius-server:$IMAGE_TAG"
+#    # TODO Добавить команды для деплоя
+#    # Например: kubectl set image deployment/agent app=$CI_REGISTRY_IMAGE/ai-issue-genius-agent:$IMAGE_TAG
+#    # Например: kubectl set image deployment/server app=$CI_REGISTRY_IMAGE/ai-issue-genius-server:$IMAGE_TAG
+#  rules:
+#    - if: $CI_COMMIT_BRANCH
+#  tags:
+#    - docker

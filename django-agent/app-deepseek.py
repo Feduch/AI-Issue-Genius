@@ -125,79 +125,82 @@ class LogAnalyzerService:
         """
         Создает текстовый промпт из структурированного запроса
         """
+        try:
+            prompt = f"""
+                Ты — AIssueGenius, эксперт по созданию технических issue.             
+                На основе анализа ошибки создай структурированное issue для разработчиков.
+                
+                ДАННЫЕ ДЛЯ АНАЛИЗА:
+                
+                ИНФОРМАЦИЯ О ПОЛЬЗОВАТЕЛЕ:
+                - {'Пользователь авторизован. USER ID: ' + str(ai_request['user']['id']) if ai_request['user']['is_authenticated'] else 'Анонимный'}
+                
+                КОНТЕКСТ ОШИБКИ:
+                - Время: {ai_request['error_context']['timestamp']}
+                - Окружение: {ai_request['error_context']['environment']}
+                - Приложение: {ai_request['error_context']['application']}
+                - Сервис: {ai_request['error_context']['service']}
+                - Метод: {ai_request['error_context']['request_method']}
+                - Путь: {ai_request['error_context']['request_path']}
+                - Body: {ai_request['error_context']['request_body']}
+    
+                ДЕТАЛИ ОШИБКИ:
+                Тип: {ai_request['error_details']['type']}
+                Сообщение: {ai_request['error_details']['message']}
+    
+                TRACEBACK:
+                {chr(10).join(ai_request['error_details']['traceback'][-5:])}
+    
+                КОД С ОШИБКОЙ:
+                Файл: {ai_request['error_details']['code_context'].get('file', 'unknown')}
+                Строка: {ai_request['error_details']['code_context'].get('line', 'unknown')}
+                Код: {ai_request['error_details']['code_context'].get('code_snippet', 'unknown')}
+    
+                ОКРУЖЕНИЕ:
+                Python: {ai_request['environment_info']['python_version']}
+                Django: {ai_request['environment_info']['django_version']}
+                Debug: {ai_request['environment_info']['debug_mode']}
+                Database: {ai_request['environment_info']['database_engine']}
+    
+                ИНСТРУКЦИЯ ДЛЯ СОЗДАНИЯ ISSUE:
+                1. Title: Краткое описательное название (максимум 10 слов)                
+                2. Description:                
+                    - Краткое описание проблемы                
+                    - Шаги для воспроизведения (если применимо)                
+                3. Labels: Добавь соответствующие метки (через запятую)                
+                4. Priority: Определи приоритет (Critical, High, Medium, Low)                
+                5. Assignee: Укажи suggested assignee (backend, frontend, devops, database)                
+                6. Milestone: Предложи milestone если это критичный баг                
+                7 .Checklist: Создай чеклист для решения проблемы
+                                
+                ФОРМАТ ВЫВОДА:
+                Выведи результат строго в формате JSON:
+                {{
+                  "title": "string",
+                  "description": "string",
+                  "labels": "string,string,string",
+                  "priority": "Critical|High|Medium|Low",
+                  "assignee": "backend|frontend|devops|database",
+                  "milestone": "string|null",
+                  "checklist": [
+                    "Шаг 1: Описание действия",
+                    "Шаг 2: Описание действия"
+                  ]
+                }}
+    
+                ПРИМЕР ХОРОШЕГО ISSUE:
+                Title: "Тайм-аут соединения с базой данных в приложении Django"
+                Priority: "High"
+                Labels: "bug,database,backend"
+                Assignee: "backend"
+                
+                Будь конкретным и практичным в рекомендациях!
+            """
 
-        prompt = f"""
-            Ты — AIssueGenius, эксперт по созданию технических issue.             
-            На основе анализа ошибки создай структурированное issue для разработчиков.
-            
-            ДАННЫЕ ДЛЯ АНАЛИЗА:
-            
-            ИНФОРМАЦИЯ О ПОЛЬЗОВАТЕЛЕ:
-            - {'Пользователь авторизован. USER ID: ' + ai_request['user']['id'] if ai_request['user']['is_authenticated'] else 'Анонимный'}
-            
-            КОНТЕКСТ ОШИБКИ:
-            - Время: {ai_request['error_context']['timestamp']}
-            - Окружение: {ai_request['error_context']['environment']}
-            - Приложение: {ai_request['error_context']['application']}
-            - Сервис: {ai_request['error_context']['service']}
-            - Метод: {ai_request['error_context']['request_method']}
-            - Путь: {ai_request['error_context']['request_path']}
-            - Body: {ai_request['error_context']['request_body']}
-
-            ДЕТАЛИ ОШИБКИ:
-            Тип: {ai_request['error_details']['type']}
-            Сообщение: {ai_request['error_details']['message']}
-
-            TRACEBACK:
-            {chr(10).join(ai_request['error_details']['traceback'][-5:])}
-
-            КОД С ОШИБКОЙ:
-            Файл: {ai_request['error_details']['code_context'].get('file', 'unknown')}
-            Строка: {ai_request['error_details']['code_context'].get('line', 'unknown')}
-            Код: {ai_request['error_details']['code_context'].get('code_snippet', 'unknown')}
-
-            ОКРУЖЕНИЕ:
-            Python: {ai_request['environment_info']['python_version']}
-            Django: {ai_request['environment_info']['django_version']}
-            Debug: {ai_request['environment_info']['debug_mode']}
-            Database: {ai_request['environment_info']['database_engine']}
-
-            ИНСТРУКЦИЯ ДЛЯ СОЗДАНИЯ ISSUE:
-            1. Title: Краткое описательное название (максимум 10 слов)                
-            2. Description:                
-                - Краткое описание проблемы                
-                - Шаги для воспроизведения (если применимо)                
-            3. Labels: Добавь соответствующие метки (через запятую)                
-            4. Priority: Определи приоритет (Critical, High, Medium, Low)                
-            5. Assignee: Укажи suggested assignee (backend, frontend, devops, database)                
-            6. Milestone: Предложи milestone если это критичный баг                
-            7 .Checklist: Создай чеклист для решения проблемы
-                            
-            ФОРМАТ ВЫВОДА:
-            Выведи результат строго в формате JSON:
-            {{
-              "title": "string",
-              "description": "string",
-              "labels": "string,string,string",
-              "priority": "Critical|High|Medium|Low",
-              "assignee": "backend|frontend|devops|database",
-              "milestone": "string|null",
-              "checklist": [
-                "Шаг 1: Описание действия",
-                "Шаг 2: Описание действия"
-              ]
-            }}
-
-            ПРИМЕР ХОРОШЕГО ISSUE:
-            Title: "Тайм-аут соединения с базой данных в приложении Django"
-            Priority: "High"
-            Labels: "bug,database,backend"
-            Assignee: "backend"
-            
-            Будь конкретным и практичным в рекомендациях!
-        """
-
-        return prompt
+            return prompt
+        except Exception as e:
+            logger.error(f"create_analysis_prompt: {e}", exc_info=True)
+            exit()
 
     def prepare_analysis(self, payload: str) -> Dict[str, Any]:
         """

@@ -12,7 +12,7 @@ class Database:
 
     async def connect(self):
         """Создает пул подключений к БД"""
-        database_url = f"{os.getenv('DB_HOST')}://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_NAME')}/ai_issue_genius"
+        database_url = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}/ai_issue_genius"
 
         self.pool = await asyncpg.create_pool(
             dsn=database_url,

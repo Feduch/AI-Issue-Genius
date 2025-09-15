@@ -35,3 +35,4 @@ curl -X POST "https://solar.ninja360.ru/api/auth/login" \
  
  docker build --no-cache -t registry.gitlab.com/ai8595334/ai-issue-genius/ai-issue-genius-server .
  docker push registry.gitlab.com/ai8595334/ai-issue-genius/ai-issue-genius-server
+ kubectl logs ai-issue-genius-server-8479f7c86b-tb9c7 -f

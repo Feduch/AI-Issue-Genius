@@ -22,7 +22,7 @@ class LogAnalyzerService:
     def __init__(self, telegram_bot_token: str, telegram_chat_id: str):
         self.telegram_bot_token = telegram_bot_token
         self.telegram_chat_id = telegram_chat_id
-        self.api_url = "https://solar.ninja360.ru/api/logs"
+        self.api_url = "https://kuber.ninja360.ru/api/logs"
 
     def fetch_logs(self) -> List[Dict]:
         """Получение логов Django за указанный период"""

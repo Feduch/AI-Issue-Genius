@@ -1,0 +1,52 @@
+#!/bin/bash
+
+while read MESSAGE; do
+    # Пропускаем MARK сообщения
+    if echo "$MESSAGE" | grep -q "-- MARK --"; then
+        continue
+    fi
+
+    # Извлекаем данные из сообщения PostgreSQL
+    TIMESTAMP=$(echo "$MESSAGE" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} [A-Z]{3}')
+    PID=$(echo "$MESSAGE" | grep -oE '\[[0-9]+\]' | tr -d '[]')
+    USER_DB=$(echo "$MESSAGE" | grep -oE '[a-zA-Z_]+@[a-zA-Z_]+' | head -1)
+    USER=$(echo "$USER_DB" | cut -d'@' -f1)
+    DB=$(echo "$USER_DB" | cut -d'@' -f2)
+
+    # Определяем уровень ошибки
+    if echo "$MESSAGE" | grep -qi "ERROR"; then
+        LEVEL="error"
+    elif echo "$MESSAGE" | grep -qi "FATAL"; then
+        LEVEL="fatal"
+    elif echo "$MESSAGE" | grep -qi "PANIC"; then
+        LEVEL="panic"
+    else
+        LEVEL="unknown"
+    fi
+
+    # Основное сообщение об ошибке
+    MESSAGE_TEXT=$(echo "$MESSAGE" | sed "s/.*$TIMESTAMP \[$PID\] $USER_DB //")
+
+    # Формируем JSON
+    JSON_DATA=$(jq -n \
+      --arg service "postgres" \
+      --arg timestamp "$(date -d "$TIMESTAMP" +%s 2>/dev/null || date +%s)" \
+      --arg level "$LEVEL" \
+      --arg pid "$PID" \
+      --arg user "$USER" \
+      --arg db "$DB" \
+      --arg message "$MESSAGE_TEXT" \
+      '{
+        service: $service,
+        timestamp: $timestamp,
+        level: $level,
+        pid: $pid,
+        user: $user,
+        db: $db,
+        message: $message
+      }')
+
+    # Отправляем на сервер
+    curl --insecure -s -H 'Content-Type: application/json' -X POST -d "$JSON_DATA" "https://kuber.ninja360.ru/api/logs" > /dev/null 2>&1
+
+done

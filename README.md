@@ -27,3 +27,11 @@ CREATE TABLE service_logs (
 curl -X POST "https://solar.ninja360.ru/api/auth/login" \
   -H "Content-Type: application/json" \
   -d '{"email": "admin@ninja360.ru", "password": "securepassword123"}'
+
+
+
+ docker build -t registry.gitlab.com/ai8595334/ai-issue-genius/ai-issue-genius-agent .
+ docker push registry.gitlab.com/ai8595334/ai-issue-genius/ai-issue-genius-agent
+ 
+ docker build --no-cache -t registry.gitlab.com/ai8595334/ai-issue-genius/ai-issue-genius-server .
+ docker push registry.gitlab.com/ai8595334/ai-issue-genius/ai-issue-genius-server

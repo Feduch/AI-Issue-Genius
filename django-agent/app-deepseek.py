@@ -4,6 +4,8 @@ import requests
 import json
 import time
 import logging
+import sys
+import traceback
 from dotenv import load_dotenv
 from utils.django import prepare_ai_request
 from typing import List, Dict, Any
@@ -238,6 +240,19 @@ class LogAnalyzerService:
             f"Лог:\n\n{log_data}"
         )
 
+        labels = ''
+
+        try:
+            labels = payload.get('labels')
+        except Exception as e:
+            pass
+
+        priority = ''
+        try:
+            priority = payload.get('priority')
+        except Exception as e:
+            pass
+
         url = "https://gitlab.com/api/v4/projects/10046060/issues"
         headers = {"PRIVATE-TOKEN": GITLAB_TOKEN}
         data = {
@@ -322,6 +337,7 @@ class LogAnalyzerService:
                 logger.info(f"Обработано {len(logs)} ошибок")
 
             except Exception as e:
+                traceback.print_exception(*sys.exc_info())
                 logger.error(f"Критическая ошибка в цикле анализа: {e}")
 
             # Ожидание следующего цикла

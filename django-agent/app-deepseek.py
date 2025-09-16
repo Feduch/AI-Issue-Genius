@@ -327,8 +327,8 @@ class LogAnalyzerService:
 
 # Конфигурация
 CONFIG = {
-    'telegram_bot_token': TELEGRAM_TOKEN,  # Замените на реальный токен
-    'telegram_chat_id': 94486111,  # Замените на реальный ID чата
+    'telegram_bot_token': TELEGRAM_TOKEN,
+    'telegram_chat_id': 94486111,
     'check_interval_minutes': 30
 }
 

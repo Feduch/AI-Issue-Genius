@@ -26,7 +26,7 @@ CREATE TABLE service_logs (
 
 curl -X POST "https://solar.ninja360.ru/api/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@ninja360.ru", "password": "securepassword123"}'
+  -d '{"email": "admin@ninja360.ru", "password": "*******"}'
 
 
 

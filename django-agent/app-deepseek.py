@@ -299,6 +299,7 @@ class LogAnalyzerService:
 
                 # Анализируем каждую ошибку
                 for log in logs:
+                    logger.info(f"log {log}")
                     log_id = log.get('id')
                     log_data = json.loads(log.get('log'))
 

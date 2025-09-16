@@ -335,7 +335,6 @@ class LogAnalyzerService:
                     time.sleep(2)
 
                 logger.info(f"Обработано {len(logs)} ошибок")
-
             except Exception as e:
                 traceback.print_exception(*sys.exc_info())
                 logger.error(f"Критическая ошибка в цикле анализа: {e}")

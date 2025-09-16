@@ -11,6 +11,7 @@ from typing import List, Dict, Any
 load_dotenv()
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+TELEGRAM_ID = os.getenv('TELEGRAM_ID')
 GITLAB_TOKEN = os.getenv('GITLAB_TOKEN')
 
 # Настройка логирования
@@ -328,7 +329,7 @@ class LogAnalyzerService:
 # Конфигурация
 CONFIG = {
     'telegram_bot_token': TELEGRAM_TOKEN,
-    'telegram_chat_id': 94486111,
+    'telegram_chat_id': TELEGRAM_ID,
     'check_interval_minutes': 30
 }
 
